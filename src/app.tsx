@@ -493,7 +493,8 @@ export default function SlotsSolitaire() {
       maxWidth: 520,
       margin: "0 auto",
       padding: "16px 16px 40px",
-      boxSizing: "border-box",
+        boxSizing: "border-box",
+        width: "100%",
     } as React.CSSProperties,
     card: {
       background: "#141416",
