@@ -490,10 +490,11 @@ export default function SlotsSolitaire() {
       overflowX: "hidden",
     } as React.CSSProperties,
     container: {
-      maxWidth: 460,
+      maxWidth: 520,
       margin: "0 auto",
       padding: "16px 16px 40px",
-      boxSizing: "border-box",
+        boxSizing: "border-box",
+        width: "100%",
     } as React.CSSProperties,
     card: {
       background: "#141416",
@@ -532,12 +533,12 @@ export default function SlotsSolitaire() {
       marginTop: 10,
       marginBottom: 10,
     } as React.CSSProperties,
-    stat: {
-      background: "#141416",
-      border: "1px solid #2a2a2e",
-      borderRadius: 16,
-      padding: 10,
-    } as React.CSSProperties,
+      stat: {
+          background: "#141416",
+          border: "1px solid #2a2a2e",
+          borderRadius: 16,
+          padding: "1px 10px",   // less vertical padding
+      } as React.CSSProperties,
     statLabel: { fontSize: 11, color: "#a8a8b3" } as React.CSSProperties,
     statValue: { fontSize: 18, fontWeight: 800 } as React.CSSProperties,
 
@@ -549,7 +550,7 @@ export default function SlotsSolitaire() {
           gridTemplateColumns: "repeat(3, 1fr)",
           gap: 8,
           width: "100%",
-          margin: "10px 0 0",
+          margin: "2px 0 0",
       },
 
       boardGridWrap: {
@@ -668,7 +669,7 @@ export default function SlotsSolitaire() {
         <div style={styles.stats}>
           <Stat label="Score" value={score.toString()} />
           <Stat label="Draws" value={`${drawsUsed}/${DRAWS_MAX}`} />
-        {/*  <Stat label="Remaining Cards In Deck" value={`${deck.length}`} />*/}
+          <Stat label="Cards in Deck " value={`${deck.length}`} />
         </div>
 
         <div style={styles.card}>
@@ -718,7 +719,7 @@ export default function SlotsSolitaire() {
           {bombOverlay ? (
             <div style={styles.bombOverlay} aria-label="Bomb overlay">
               <div style={styles.bombOverlayInner}>
-                <img src={ASSET_MAP.bomb} alt="Bomb" style={{ width: "clamp(220px, 60vw, 420px)", height: "auto", objectFit: "contain" }} />
+                <img src={ASSET_MAP.bomb} alt="Bomb" style={{ width: "clamp(120px, 35vw, 240px)", height: "auto", objectFit: "contain" }} />
               </div>
               {/*<div style={styles.bombOverlayText}>BOMB!</div>*/}
             </div>
@@ -732,19 +733,28 @@ export default function SlotsSolitaire() {
               disabled={!(selected.length === 3 && isLine(selected) && selectionInfo.ok && !drawn && !bombOverlay)}
               style={{
                 ...styles.btnPrimary,
+                flex: 1,
+                minWidth: 0,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
                 ...(selected.length === 3 && isLine(selected) && selectionInfo.ok && !drawn && !bombOverlay ? {} : styles.btnDisabled),
               }}
             >
             {selected.length === 3 && isLine(selected) && selectionInfo.ok
                 ? "Cash In"
-                : "Select Winning Cards"}
+                : "Select a Win"}
             </button>
-              {selected.length > 0 && (
-
-            <button onClick={onClearSelection} style={styles.btn}>
+              <button
+              onClick={onClearSelection}
+              disabled={selected.length === 0}
+              style={{
+                ...styles.btn,
+                ...(selected.length === 0 ? styles.btnDisabled : {}),
+              }}
+            >
               Clear
             </button>
-                        )}
 </div>
 
 
@@ -782,9 +792,9 @@ export default function SlotsSolitaire() {
             <div style={{ ...styles.toast, marginTop: 12 }}>
               <div style={{ fontWeight: 900 }}>Game over — {DRAWS_MAX} draws used</div>
               {/*<div style={{ color: "#a8a8b3", marginTop: 4 }}>Final score: {score}</div>*/}
-              <button onClick={resetGame} style={{ ...styles.btnPrimary, width: "100%", marginTop: 10 }}>
-                Play again
-              </button>
+              {/*<button onClick={resetGame} style={{ ...styles.btnPrimary, width: "100%", marginTop: 10 }}>*/}
+              {/*  Play again*/}
+              {/*</button>*/}
             </div>
           ) : null}
 

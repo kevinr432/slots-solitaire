@@ -658,7 +658,7 @@ export default function SlotsSolitaire() {
       <div style={styles.container}>
         <header style={{ ...styles.row, marginBottom: 10 }}>
           <div>
-            <h1 style={styles.h1}>SLOTS Solitaire</h1>
+            <h1 style={styles.h1}>SLOTS Solitaire </h1>
           {/*  <p style={styles.sub}>Mobile-first • Single player • Manual scoring</p>*/}
           </div>
           <button style={styles.btn} onClick={resetGame}>
@@ -768,35 +768,38 @@ export default function SlotsSolitaire() {
     />
   </div>
 
-  <button
-    onClick={drawn ? onDiscardDrawn : onDraw}
-    disabled={bombOverlay || isSpinning || (!drawn && !canDraw)}
+<button
+    onClick={gameOver ? resetGame : (drawn ? onDiscardDrawn : onDraw)}
+    disabled={bombOverlay || isSpinning || (!gameOver && !drawn && !canDraw)}
     style={{
-      ...styles.btnPrimary,
-      ...styles.drawBtnSmall,
-      ...(drawn
-        ? { background: "#24242a", borderColor: "#2f2f36", color: "#f5f5f5" }
-        : {
-            background: canDraw ? "#36d399" : "#24242a",
-            borderColor: canDraw ? "#36d399" : "#2f2f36",
-            color: canDraw ? "#08110d" : "#a8a8b3",
-          }),
-      ...((drawn || canDraw) ? {} : styles.btnDisabled),
+        ...styles.btnPrimary,
+        ...styles.drawBtnSmall,
+        ...(gameOver
+            ? { background: "#36d399", borderColor: "#36d399", color: "#08110d" }
+            : drawn
+                ? { background: "#24242a", borderColor: "#2f2f36", color: "#f5f5f5" }
+                : {
+                    background: canDraw ? "#36d399" : "#24242a",
+                    borderColor: canDraw ? "#36d399" : "#2f2f36",
+                    color: canDraw ? "#08110d" : "#a8a8b3",
+                }),
+        ...((gameOver || drawn || canDraw) ? {} : styles.btnDisabled),
     }}
-  >
-    {drawn ? "Discard" : "Draw"}
-  </button>
+>
+    {gameOver ? "Play Again" : drawn ? "Discard" : "Draw"}
+</button>
+
 </div>
 
-          {gameOver ? (
-            <div style={{ ...styles.toast, marginTop: 12 }}>
-              <div style={{ fontWeight: 900 }}>Game over — {DRAWS_MAX} draws used</div>
-              {/*<div style={{ color: "#a8a8b3", marginTop: 4 }}>Final score: {score}</div>*/}
-              {/*<button onClick={resetGame} style={{ ...styles.btnPrimary, width: "100%", marginTop: 10 }}>*/}
-              {/*  Play again*/}
-              {/*</button>*/}
-            </div>
-          ) : null}
+          {/*{gameOver ? (*/}
+          {/*  <div style={{ ...styles.toast, marginTop: 12 }}>*/}
+          {/*    <div style={{ fontWeight: 900 }}>Game over — {DRAWS_MAX} draws used</div>*/}
+          {/*    */}{/*<div style={{ color: "#a8a8b3", marginTop: 4 }}>Final score: {score}</div>*/}
+          {/*    */}{/*<button onClick={resetGame} style={{ ...styles.btnPrimary, width: "100%", marginTop: 10 }}>*/}
+          {/*    */}{/*  Play again*/}
+          {/*    */}{/*</button>*/}
+          {/*  </div>*/}
+          {/*) : null}*/}
 
         {/*  <div style={{ marginTop: 12, fontSize: 12, color: "#a8a8b3", lineHeight: 1.5 }}>*/}
         {/*    <div style={{ fontWeight: 900, color: "#d8d8de", marginBottom: 6 }}>Rules</div>*/}
