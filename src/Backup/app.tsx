@@ -607,6 +607,16 @@ export default function SlotsSolitaire() {
 
     controlsRow: { display: "flex", gap: 8, marginTop: 10 } as React.CSSProperties,
 
+    drawRow: { display: "flex", gap: 8, marginTop: 10, alignItems: "stretch" } as React.CSSProperties,
+    drawBtnSmall: {
+      padding: "10px 12px",
+      borderRadius: 14,
+      fontWeight: 900,
+      cursor: "pointer",
+      width: 160,
+      maxWidth: "44vw",
+    } as React.CSSProperties,
+
     toast: {
       background: "#101012",
       border: "1px solid #2a2a2e",
@@ -658,7 +668,7 @@ export default function SlotsSolitaire() {
         <div style={styles.stats}>
           <Stat label="Score" value={score.toString()} />
           <Stat label="Draws" value={`${drawsUsed}/${DRAWS_MAX}`} />
-          <Stat label="Remaining Cards In Deck" value={`${deck.length}`} />
+        {/*  <Stat label="Remaining Cards In Deck" value={`${deck.length}`} />*/}
         </div>
 
         <div style={styles.card}>
@@ -727,7 +737,7 @@ export default function SlotsSolitaire() {
             >
             {selected.length === 3 && isLine(selected) && selectionInfo.ok
                 ? "Cash In"
-                : "Select Cards You Wish to Cash-In"}
+                : "Select Winning Cards"}
             </button>
               {selected.length > 0 && (
 
@@ -738,17 +748,22 @@ export default function SlotsSolitaire() {
 </div>
 
 
-          {/* Draw / Discard controls */}
-          
-{/*
-  Draw / Discard control (single button to prevent layout “jump”)
-*/}
-<div style={styles.controlsRow}>
+{/* Draw / Deck */}
+<div style={styles.drawRow}>
+  <div style={styles.drawnBox} aria-label="Deck preview">
+    <img
+      src={drawn ? ASSET_MAP[drawn.sym] : CARD_BACK_SRC}
+      alt={drawn ? LABEL[drawn.sym] : "Deck"}
+      style={{ width: "100%", height: "100%", objectFit: "contain" }}
+    />
+  </div>
+
   <button
     onClick={drawn ? onDiscardDrawn : onDraw}
     disabled={bombOverlay || isSpinning || (!drawn && !canDraw)}
     style={{
       ...styles.btnPrimary,
+      ...styles.drawBtnSmall,
       ...(drawn
         ? { background: "#24242a", borderColor: "#2f2f36", color: "#f5f5f5" }
         : {
@@ -759,28 +774,9 @@ export default function SlotsSolitaire() {
       ...((drawn || canDraw) ? {} : styles.btnDisabled),
     }}
   >
-    {drawn ? "Discard Draw" : "Draw"}
+    {drawn ? "Discard" : "Draw"}
   </button>
 </div>
-
-          {/* Drawn card / deck preview (kept BELOW the Draw button to avoid layout jump) */}
-          <div style={styles.drawnPanel}>
-            <div style={styles.drawnBox}>
-              <img
-                src={drawn ? ASSET_MAP[drawn.sym] : CARD_BACK_SRC}
-                alt={drawn ? LABEL[drawn.sym] : "Deck"}
-                style={{ width: "100%", height: "100%", objectFit: "contain" }}
-              />
-            </div>
-            <div>
-              <div style={styles.drawnTitle}>{drawn ? `Drawn: ${LABEL[drawn.sym]}` : "Deck"}</div>
-              <div style={styles.drawnHint}>
-                {drawn
-                  ? "Now tap any board card to replace it, or press “Discard Draw”."
-                  : `Cards remaining: ${deck.length}. Tap “Draw” to pull a card.`}
-              </div>
-            </div>
-          </div>
 
           {gameOver ? (
             <div style={{ ...styles.toast, marginTop: 12 }}>
