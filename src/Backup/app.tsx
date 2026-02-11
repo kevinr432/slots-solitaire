@@ -67,7 +67,7 @@ const LABEL: Record<SymbolKey, string> = {
   seven: "7",
   bar: "BAR",
   cherry: "Cherry",
-  jewel: "Jewel (0)",
+  jewel: "Jewel",
   bomb: "Bomb",
 };
 
@@ -149,8 +149,7 @@ export default function SlotsSolitaire() {
   const [drawsUsed, setDrawsUsed] = useState(0);
   const [score, setScore] = useState(0);
   const [selected, setSelected] = useState<number[]>([]);
-  const [log, setLog] = useState<LogItem[]>([]);
-  const [message, setMessage] = useState<string>("");
+  const [, setLog] = useState<LogItem[]>([]);
 
   const [bombOverlay, setBombOverlay] = useState(false);
 
@@ -212,8 +211,6 @@ export default function SlotsSolitaire() {
   }
   const bombTimer = useRef<number | null>(null);
 
-  const messageTimer = useRef<number | null>(null);
-
   const canDraw = drawsUsed < DRAWS_MAX && drawn === null;
 
   const selectionInfo = useMemo(() => {
@@ -227,12 +224,6 @@ export default function SlotsSolitaire() {
 
   function pushLog(text: string) {
     setLog((l) => clampLog([...l, { id: uid("log"), ts: Date.now(), text }], 12));
-  }
-
-  function flash(msg: string) {
-    setMessage(msg);
-    if (messageTimer.current) window.clearTimeout(messageTimer.current);
-    messageTimer.current = window.setTimeout(() => setMessage(""), 2200);
   }
 
   function ensureDeckAvailable(curDeck: Card[], curDiscard: Card[]) {
@@ -283,7 +274,6 @@ export default function SlotsSolitaire() {
     setScore(0);
     setSelected([]);
     setLog([]);
-    flash("New game started");
     pushLog("New game started");
 
     // Slot-style spin animation for the initial deal (all 9 cells).
@@ -357,8 +347,6 @@ export default function SlotsSolitaire() {
         });
         return curDeck;
       });
-
-      flash("💣 BOOM! Board wiped.");
       pushLog(`💣 Bomb triggered (${reason}). Board wiped + redealt.`);
     }, 1800);
   }
@@ -374,7 +362,6 @@ export default function SlotsSolitaire() {
       setDiscard((curDiscard) => {
         const t = takeTop(curDeck, curDiscard);
         if (!t.card) {
-          flash("Deck empty");
           return curDiscard;
         }
 
@@ -386,7 +373,6 @@ export default function SlotsSolitaire() {
           triggerBomb("draw");
         } else {
           setDrawn(t.card);
-          flash(`Drew: ${LABEL[t.card.sym]}`);
           pushLog(`Drew ${LABEL[t.card.sym]}.`);
         }
         return t.discard;
@@ -440,7 +426,6 @@ export default function SlotsSolitaire() {
   function onScoreSelected() {
     if (selected.length !== 3) return;
     if (!isLine(selected)) {
-      flash("Select 3 in a line");
       return;
     }
 
@@ -449,7 +434,6 @@ export default function SlotsSolitaire() {
 
     const ev = evaluateLine(cards);
     if (!ev.ok) {
-      flash(ev.label);
       return;
     }
 
@@ -490,7 +474,6 @@ export default function SlotsSolitaire() {
     });
 
     pushLog(`Scored ${ev.label} for ${ev.points}.`);
-    flash(`+${ev.points} (${ev.label})`);
     setSelected([]);
   }
 
@@ -503,11 +486,14 @@ export default function SlotsSolitaire() {
       background: "#0b0b0c",
       color: "#f5f5f5",
       fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif",
+      overflowY: "scroll",
+      overflowX: "hidden",
     } as React.CSSProperties,
     container: {
       maxWidth: 460,
       margin: "0 auto",
       padding: "16px 16px 40px",
+      boxSizing: "border-box",
     } as React.CSSProperties,
     card: {
       background: "#141416",
@@ -539,15 +525,6 @@ export default function SlotsSolitaire() {
       flex: 1,
     } as React.CSSProperties,
     btnDisabled: { opacity: 0.45, cursor: "not-allowed" } as React.CSSProperties,
-    toast: {
-      marginTop: 10,
-      marginBottom: 10,
-      background: "#121214",
-      border: "1px solid #2a2a2e",
-      borderRadius: 14,
-      padding: "10px 12px",
-      fontSize: 14,
-    } as React.CSSProperties,
     stats: {
       display: "grid",
       gridTemplateColumns: "repeat(3, 1fr)",
@@ -630,6 +607,13 @@ export default function SlotsSolitaire() {
 
     controlsRow: { display: "flex", gap: 8, marginTop: 10 } as React.CSSProperties,
 
+    toast: {
+      background: "#101012",
+      border: "1px solid #2a2a2e",
+      borderRadius: 16,
+      padding: 12,
+    } as React.CSSProperties,
+
     info: { marginTop: 10, fontSize: 14, color: "#d8d8de" } as React.CSSProperties,
     faint: { color: "#a8a8b3" } as React.CSSProperties,
 
@@ -655,17 +639,7 @@ export default function SlotsSolitaire() {
       justifyContent: "center",
     } as React.CSSProperties,
     drawnTitle: { fontWeight: 900, marginBottom: 2 } as React.CSSProperties,
-    drawnHint: { fontSize: 12, color: "#a8a8b3" } as React.CSSProperties,
-
-    logCard: {
-      marginTop: 12,
-      background: "#141416",
-      border: "1px solid #2a2a2e",
-      borderRadius: 18,
-      padding: 12,
-    } as React.CSSProperties,
-    logTitle: { fontSize: 14, fontWeight: 900, marginBottom: 8 } as React.CSSProperties,
-    logItem: { fontSize: 12, color: "#d8d8de", marginBottom: 6 } as React.CSSProperties,
+    drawnHint: { fontSize: 12, color: "#a8a8b3", lineHeight: 1.35, minHeight: 34 } as React.CSSProperties,
   };
 
   return (
@@ -687,15 +661,11 @@ export default function SlotsSolitaire() {
           <Stat label="Remaining Cards In Deck" value={`${deck.length}`} />
         </div>
 
-        <div style={{ ...styles.toast, visibility: message ? "visible" : "hidden" }}>
-            {message || "placeholder"}
-        </div>
-
         <div style={styles.card}>
-          <div style={styles.boardHeader}>
-            <div style={{ fontSize: 14, fontWeight: 900 }}>Board</div>
-            <div style={styles.boardNote}>Tap cards to select a line • Tap again to unselect</div>
-          </div>
+          {/*<div style={styles.boardHeader}>*/}
+          {/*  <div style={{ fontSize: 14, fontWeight: 900 }}>Board</div>*/}
+          {/*  <div style={styles.boardNote}>Tap cards to select a line • Tap again to unselect</div>*/}
+          {/*</div>*/}
 
           <div style={styles.boardGridWrap}>
           <div style={styles.boardGrid}>
@@ -740,7 +710,7 @@ export default function SlotsSolitaire() {
               <div style={styles.bombOverlayInner}>
                 <img src={ASSET_MAP.bomb} alt="Bomb" style={{ width: "clamp(220px, 60vw, 420px)", height: "auto", objectFit: "contain" }} />
               </div>
-              <div style={styles.bombOverlayText}>BOMB!</div>
+              {/*<div style={styles.bombOverlayText}>BOMB!</div>*/}
             </div>
           ) : null}
         </div>
@@ -767,51 +737,31 @@ export default function SlotsSolitaire() {
                         )}
 </div>
 
-          {/* Info line */}
-          <div style={styles.info}>
-            {drawn ? null : selected.length === 0 ? (
-              <span style={styles.faint}></span>
-            ) : (
-              <span>
-                <strong>Selection:</strong> {selectionInfo.label}{" "}
-                {selectionInfo.ok ? <span style={styles.faint}>({selectionInfo.points} pts)</span> : null}
-              </span>
-            )}
-          </div>
 
           {/* Draw / Discard controls */}
-          {drawn ? (
-            <div style={styles.controlsRow}>
-              <button onClick={onDiscardDrawn} style={{ ...styles.btnPrimary, background: "#24242a", borderColor: "#2f2f36", color: "#f5f5f5" }}>
-                Discard Draw
-              </button>
-            {/*  <button*/}
-            {/*    onClick={() => flash("Tap a board card to replace it with the drawn card")}*/}
-            {/*    style={styles.btn}*/}
-            {/*  >*/}
-            {/*    Replace*/}
-            {/*  </button>*/}
-            </div>
-          ) : (
-            <div style={styles.controlsRow}>
-              <button
-                onClick={onDraw}
-                disabled={!canDraw || bombOverlay || isSpinning}
-                style={{
-                  ...styles.btnPrimary,
-                  background: canDraw ? "#36d399" : "#24242a",
-                  borderColor: canDraw ? "#36d399" : "#2f2f36",
-                  color: canDraw ? "#08110d" : "#a8a8b3",
-                  ...(canDraw ? {} : styles.btnDisabled),
-                }}
-              >
-                Draw
-              </button>
-            {/*  <button onClick={() => flash("Score lines first if you want — or draw to continue")} style={styles.btn}>*/}
-            {/*    Info*/}
-            {/*  </button>*/}
-            </div>
-          )}
+          
+{/*
+  Draw / Discard control (single button to prevent layout “jump”)
+*/}
+<div style={styles.controlsRow}>
+  <button
+    onClick={drawn ? onDiscardDrawn : onDraw}
+    disabled={bombOverlay || isSpinning || (!drawn && !canDraw)}
+    style={{
+      ...styles.btnPrimary,
+      ...(drawn
+        ? { background: "#24242a", borderColor: "#2f2f36", color: "#f5f5f5" }
+        : {
+            background: canDraw ? "#36d399" : "#24242a",
+            borderColor: canDraw ? "#36d399" : "#2f2f36",
+            color: canDraw ? "#08110d" : "#a8a8b3",
+          }),
+      ...((drawn || canDraw) ? {} : styles.btnDisabled),
+    }}
+  >
+    {drawn ? "Discard Draw" : "Draw"}
+  </button>
+</div>
 
           {/* Drawn card / deck preview (kept BELOW the Draw button to avoid layout jump) */}
           <div style={styles.drawnPanel}>
@@ -835,7 +785,7 @@ export default function SlotsSolitaire() {
           {gameOver ? (
             <div style={{ ...styles.toast, marginTop: 12 }}>
               <div style={{ fontWeight: 900 }}>Game over — {DRAWS_MAX} draws used</div>
-              <div style={{ color: "#a8a8b3", marginTop: 4 }}>Final score: {score}</div>
+              {/*<div style={{ color: "#a8a8b3", marginTop: 4 }}>Final score: {score}</div>*/}
               <button onClick={resetGame} style={{ ...styles.btnPrimary, width: "100%", marginTop: 10 }}>
                 Play again
               </button>
@@ -850,26 +800,6 @@ export default function SlotsSolitaire() {
         {/*    <div>• Bomb wipes the whole board and redeals 9.</div>*/}
         {/*    <div>• You can score multiple times between draws (“let it ride”).</div>*/}
         {/*  </div>*/}
-        </div>
-
-        <div style={styles.logCard}>
-          <div style={styles.logTitle}>Recent activity</div>
-          {log.length === 0 ? (
-            <div style={{ fontSize: 12, color: "#a8a8b3" }}>No actions yet.</div>
-          ) : (
-            log
-              .slice()
-              .reverse()
-              .map((item) => (
-                <div key={item.id} style={styles.logItem}>
-                  {item.text}
-                </div>
-              ))
-          )}
-        </div>
-
-        <div style={{ marginTop: 10, fontSize: 12, color: "#6f6f7a" }}>
-          Tip: Your images must be in <code>/public/assets</code> and named crown.png, diamond.png, present.png, seven.png, bar.png, cherry.png, jewel.png, bomb.png.
         </div>
       </div>
     </div>

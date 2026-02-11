@@ -658,7 +658,7 @@ export default function SlotsSolitaire() {
         <div style={styles.stats}>
           <Stat label="Score" value={score.toString()} />
           <Stat label="Draws" value={`${drawsUsed}/${DRAWS_MAX}`} />
-          <Stat label="Remaining Cards In Deck" value={`${deck.length}`} />
+        {/*  <Stat label="Remaining Cards In Deck" value={`${deck.length}`} />*/}
         </div>
 
         <div style={styles.card}>
@@ -727,7 +727,7 @@ export default function SlotsSolitaire() {
             >
             {selected.length === 3 && isLine(selected) && selectionInfo.ok
                 ? "Cash In"
-                : "Select Cards You Wish to Cash-In"}
+                : "Select Winning Cards"}
             </button>
               {selected.length > 0 && (
 
