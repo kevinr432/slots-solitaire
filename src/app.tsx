@@ -490,7 +490,7 @@ export default function SlotsSolitaire() {
       overflowX: "hidden",
     } as React.CSSProperties,
     container: {
-      maxWidth: 460,
+      maxWidth: 520,
       margin: "0 auto",
       padding: "16px 16px 40px",
       boxSizing: "border-box",
