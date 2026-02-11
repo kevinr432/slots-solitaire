@@ -533,12 +533,12 @@ export default function SlotsSolitaire() {
       marginTop: 10,
       marginBottom: 10,
     } as React.CSSProperties,
-    stat: {
-      background: "#141416",
-      border: "1px solid #2a2a2e",
-      borderRadius: 16,
-      padding: 10,
-    } as React.CSSProperties,
+      stat: {
+          background: "#141416",
+          border: "1px solid #2a2a2e",
+          borderRadius: 16,
+          padding: "1px 10px",   // less vertical padding
+      } as React.CSSProperties,
     statLabel: { fontSize: 11, color: "#a8a8b3" } as React.CSSProperties,
     statValue: { fontSize: 18, fontWeight: 800 } as React.CSSProperties,
 
@@ -550,7 +550,7 @@ export default function SlotsSolitaire() {
           gridTemplateColumns: "repeat(3, 1fr)",
           gap: 8,
           width: "100%",
-          margin: "10px 0 0",
+          margin: "2px 0 0",
       },
 
       boardGridWrap: {
@@ -669,7 +669,7 @@ export default function SlotsSolitaire() {
         <div style={styles.stats}>
           <Stat label="Score" value={score.toString()} />
           <Stat label="Draws" value={`${drawsUsed}/${DRAWS_MAX}`} />
-        {/*  <Stat label="Remaining Cards In Deck" value={`${deck.length}`} />*/}
+          <Stat label="Cards in Deck " value={`${deck.length}`} />
         </div>
 
         <div style={styles.card}>
