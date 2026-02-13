@@ -545,13 +545,14 @@ export default function SlotsSolitaire() {
       flex: 1,
     } as React.CSSProperties,
     btnDisabled: { opacity: 0.45, cursor: "not-allowed" } as React.CSSProperties,
-    stats: {
-      display: "grid",
-      gridTemplateColumns: "repeat(3, 1fr)",
-      gap: 8,
-      marginTop: 10,
-      marginBottom: 10,
-    } as React.CSSProperties,
+      stats: {
+          display: "grid",
+          alignItems: "start", // ← THIS is the key (stops stretching)
+          gridTemplateColumns: "repeat(3, 1fr)",
+          gap: 8,
+          marginTop: 10,
+          marginBottom: 10,
+      } as React.CSSProperties,
     stat: {
       background: "#141416",
       border: "1px solid #2a2a2e",
@@ -687,25 +688,39 @@ export default function SlotsSolitaire() {
                               objectFit: "contain"
                           }}
                       />
-            <button style={styles.helpCloseBtn} onClick={() => setShowHelp(false)}>
+                      <button style={styles.helpCloseBtn}
+                          onClick={() => setShowHelp(false)}
+                          style={{
+                              ...styles.btnPrimary,
+                              fontSize: 20,
+                              flex: "0 0 auto",   // stop flex stretching
+                              padding: "6px 10px",
+                              height: 40,         // control height directly
+                              width: 120         // control height directly
+                          }}
+            >
               Close
             </button>
           </div>
         ) : (
           <>
         <div style={styles.stats}>
-          <Stat label="Score" value={score.toString()} />
-            <Stat label="Draws" value={`${drawsUsed}/${DRAWS_MAX}`} />
-                              <button
-                                  onClick={() => setShowHelp(true)}
-                                  style={{
-                                      ...styles.btnPrimary,
-                                      padding: "10px 16px",
-                                      fontSize: 20   // larger text
-                                  }}
-                              >
-                                  HELP
-                              </button>
+            <Stat label="Score" value={score.toString()} />
+            <Stat label="Draws" value={`${drawsUsed}/${DRAWS_MAX}`}
+            />
+            <button
+                onClick={() => setShowHelp(true)}
+                style={{
+                    ...styles.btnPrimary,
+                    fontSize: 20,
+                    flex: "0 0 auto",   // stop flex stretching
+                    padding: "6px 10px",
+                    height: 60,         // control height directly
+                    width: 120         // control height directly
+                }}
+            >
+                HELP
+            </button>
         {/*  <Stat label="Remaining Cards In Deck" value={`${deck.length}`} />*/}
         </div>
 
