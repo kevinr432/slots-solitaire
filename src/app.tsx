@@ -724,7 +724,7 @@ export default function SlotsSolitaire() {
                           src={HELP_IMAGE_SRC}
                           style={{
                               maxWidth: "100%",
-                              maxHeight: "100vh",
+                              maxHeight: "120vh",
                               width: "auto",
                               height: "auto",
                               objectFit: "contain"
