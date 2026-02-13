@@ -60,9 +60,6 @@ const ASSET_MAP: Record<SymbolKey, string> = {
 // Put your image at: public/assets/cardback.png
 const CARD_BACK_SRC = "/assets/cardback.png";
 
-// Help screen image (place the attached graphic at: /public/Score.png)
-const HELP_IMAGE_SRC = "/assets/Score.png";
-
 const LABEL: Record<SymbolKey, string> = {
   crown: "Crown (Wild)",
   diamond: "Diamond",
@@ -156,8 +153,6 @@ export default function SlotsSolitaire() {
 
   const [bombOverlay, setBombOverlay] = useState(false);
 
-  const [showHelp, setShowHelp] = useState(false);
-
   // Dealing animation (slot-style spin) — shows random symbols briefly before committing the real card(s)
   const SPIN_MS = 500;
   const SPIN_TICK_MS = 60;
@@ -217,33 +212,15 @@ export default function SlotsSolitaire() {
   const bombTimer = useRef<number | null>(null);
 
   const canDraw = drawsUsed < DRAWS_MAX && drawn === null;
-  const hasCashSelection = selected.length > 0;
-  const canDrawNow = canDraw && !hasCashSelection;
-
-  // Multi-line scoring: the player can select any number of cards and we will
-  // cash in *all* complete winning lines that are contained within the selection.
-  const winningLines = useMemo(() => {
-    if (selected.length < 3) return [] as { line: number[]; points: number; label: string }[];
-    const sel = new Set(selected);
-    const out: { line: number[]; points: number; label: string }[] = [];
-    for (const ln of LINES) {
-      if (!ln.every((i) => sel.has(i))) continue;
-      const cards = ln.map((i) => grid[i]).filter(Boolean) as Card[];
-      if (cards.length !== 3) continue;
-      const ev = evaluateLine(cards);
-      if (!ev.ok) continue;
-      out.push({ line: ln, points: ev.points, label: ev.label });
-    }
-    return out;
-  }, [selected, grid]);
 
   const selectionInfo = useMemo(() => {
-    if (selected.length === 0) return { ok: false, points: 0, label: "Select a Win" };
-    if (winningLines.length === 0) return { ok: false, points: 0, label: "No winning line selected" };
-    const points = winningLines.reduce((sum, w) => sum + w.points, 0);
-    const label = winningLines.length === 1 ? winningLines[0].label : `${winningLines.length} wins`;
-    return { ok: true, points, label };
-  }, [selected.length, winningLines]);
+    if (selected.length !== 3) return { validLine: false, ok: false, points: 0, label: "Select 3 cards" };
+    if (!isLine(selected)) return { validLine: false, ok: false, points: 0, label: "Selection must be a straight line" };
+    const cards = selected.map((i) => grid[i]).filter(Boolean) as Card[];
+    if (cards.length !== 3) return { validLine: true, ok: false, points: 0, label: "Invalid selection" };
+    const ev = evaluateLine(cards);
+    return { validLine: true, ...ev };
+  }, [selected, grid]);
 
   function pushLog(text: string) {
     setLog((l) => clampLog([...l, { id: uid("log"), ts: Date.now(), text }], 12));
@@ -437,8 +414,7 @@ export default function SlotsSolitaire() {
     setSelected((sel) => {
       const exists = sel.includes(idx);
       if (exists) return sel.filter((x) => x !== idx);
-      // Allow selecting multiple winning lines (e.g., 5 cards for a cross, 6 for two lines).
-      if (sel.length >= GRID_SIZE) return sel;
+      if (sel.length >= 3) return sel;
       return [...sel, idx];
     });
   }
@@ -448,17 +424,23 @@ export default function SlotsSolitaire() {
   }
 
   function onScoreSelected() {
-    if (drawn || bombOverlay) return;
-    if (winningLines.length === 0) return;
+    if (selected.length !== 3) return;
+    if (!isLine(selected)) {
+      return;
+    }
 
-    // Score all winning lines contained in the selection.
-    // Note: overlapping lines are allowed; shared cards only get discarded/replaced once.
-    const points = winningLines.reduce((sum, w) => sum + w.points, 0);
-    const slots = Array.from(new Set(winningLines.flatMap((w) => w.line))).sort((a, b) => a - b);
-    const cardsToDiscard = slots.map((i) => grid[i]).filter(Boolean) as Card[];
+    const cards = selected.map((i) => grid[i]).filter(Boolean) as Card[];
+    if (cards.length !== 3) return;
 
-    setScore((s) => s + points);
-    setDiscard((dc) => [...dc, ...cardsToDiscard]);
+    const ev = evaluateLine(cards);
+    if (!ev.ok) {
+      return;
+    }
+
+    const slots = selected.slice().sort((a, b) => a - b);
+
+    setScore((s) => s + ev.points);
+    setDiscard((dc) => [...dc, ...cards]);
 
     setGrid((g) => {
       const next = g.slice();
@@ -469,7 +451,7 @@ export default function SlotsSolitaire() {
     setDeck((curDeck) => {
       setDiscard((curDiscard) => {
         const ensured = ensureDeckAvailable(curDeck, curDiscard);
-        const dealt = dealN(slots.length, ensured.d, ensured.dc);
+        const dealt = dealN(3, ensured.d, ensured.dc);
 
         setDeck(dealt.deck);
         setDiscard(dealt.discard);
@@ -491,8 +473,7 @@ export default function SlotsSolitaire() {
       return curDeck;
     });
 
-    const label = winningLines.length === 1 ? winningLines[0].label : winningLines.map((w) => w.label).join(" + ");
-    pushLog(`Scored ${label} for ${points}.`);
+    pushLog(`Scored ${ev.label} for ${ev.points}.`);
     setSelected([]);
   }
 
@@ -540,7 +521,6 @@ export default function SlotsSolitaire() {
       padding: "12px 12px",
       borderRadius: 14,
       fontWeight: 800,
-      fontSize: 22,
       cursor: "pointer",
       flex: 1,
     } as React.CSSProperties,
@@ -627,6 +607,16 @@ export default function SlotsSolitaire() {
 
     controlsRow: { display: "flex", gap: 8, marginTop: 10 } as React.CSSProperties,
 
+    drawRow: { display: "flex", gap: 8, marginTop: 10, alignItems: "stretch" } as React.CSSProperties,
+    drawBtnSmall: {
+      padding: "10px 12px",
+      borderRadius: 14,
+      fontWeight: 900,
+      cursor: "pointer",
+      width: 160,
+      maxWidth: "44vw",
+    } as React.CSSProperties,
+
     toast: {
       background: "#101012",
       border: "1px solid #2a2a2e",
@@ -675,37 +665,9 @@ export default function SlotsSolitaire() {
           </button>
         </header>
 
-        {showHelp ? (
-          <div style={styles.helpScreen}>
-                      <img
-                          src={HELP_IMAGE_SRC}
-                          style={{
-                              maxWidth: "100%",
-                              maxHeight: "80vh",
-                              width: "auto",
-                              height: "auto",
-                              objectFit: "contain"
-                          }}
-                      />
-            <button style={styles.helpCloseBtn} onClick={() => setShowHelp(false)}>
-              Close
-            </button>
-          </div>
-        ) : (
-          <>
         <div style={styles.stats}>
           <Stat label="Score" value={score.toString()} />
-            <Stat label="Draws" value={`${drawsUsed}/${DRAWS_MAX}`} />
-                              <button
-                                  onClick={() => setShowHelp(true)}
-                                  style={{
-                                      ...styles.btnPrimary,
-                                      padding: "10px 16px",
-                                      fontSize: 20   // larger text
-                                  }}
-                              >
-                                  HELP
-                              </button>
+          <Stat label="Draws" value={`${drawsUsed}/${DRAWS_MAX}`} />
         {/*  <Stat label="Remaining Cards In Deck" value={`${deck.length}`} />*/}
         </div>
 
@@ -767,69 +729,62 @@ export default function SlotsSolitaire() {
           <div style={styles.controlsRow}>
             <button
               onClick={onScoreSelected}
-              disabled={!(selectionInfo.ok && !drawn && !bombOverlay)}
+              disabled={!(selected.length === 3 && isLine(selected) && selectionInfo.ok && !drawn && !bombOverlay)}
               style={{
                 ...styles.btnPrimary,
-                ...(selectionInfo.ok && !drawn && !bombOverlay ? {} : styles.btnDisabled),
+                ...(selected.length === 3 && isLine(selected) && selectionInfo.ok && !drawn && !bombOverlay ? {} : styles.btnDisabled),
               }}
             >
-            {selectionInfo.ok ? "Cash In" : "Select a Win"}
+            {selected.length === 3 && isLine(selected) && selectionInfo.ok
+                ? "Cash In"
+                : "Select Winning Cards"}
             </button>
-            <button
-              onClick={onClearSelection}
-              disabled={selected.length === 0}
-              style={{
-                ...styles.btn,
-                ...(selected.length === 0 ? styles.btnDisabled : {}),
-              }}
-            >
+              {selected.length > 0 && (
+
+            <button onClick={onClearSelection} style={styles.btn}>
               Clear
             </button>
+                        )}
 </div>
 
 
-          {/* Draw / Discard controls */}
-          
-{/*
-  Draw / Discard control (single button to prevent layout “jump”)
-*/}
+{/* Draw / Deck */}
+<div style={styles.drawRow}>
+  <div style={styles.drawnBox} aria-label="Deck preview">
+    <img
+      src={drawn ? ASSET_MAP[drawn.sym] : CARD_BACK_SRC}
+      alt={drawn ? LABEL[drawn.sym] : "Deck"}
+      style={{ width: "100%", height: "100%", objectFit: "contain" }}
+    />
+  </div>
 
-    {/* Deck + Draw/Discard button (horizontal to save vertical space) */}
-    <div style={styles.drawnPanel}>
-        <div style={styles.drawnBox}>
-            <img
-                src={drawn ? ASSET_MAP[drawn.sym] : CARD_BACK_SRC}
-                alt={drawn ? LABEL[drawn.sym] : "Deck"}
-                style={{ width: "100%", height: "100%", objectFit: "contain" }}
-            />
-        </div>
-
-        <button
-            onClick={drawn ? onDiscardDrawn : onDraw}
-            disabled={bombOverlay || isSpinning || (!drawn && !canDrawNow)}
-            style={{
-                ...styles.btnPrimary,
-                height: 86,
-                fontSize: 22,
-                ...(drawn
-                    ? { background: "#24242a", borderColor: "#2f2f36", color: "#f5f5f5" }
-                    : {
-                        background: canDrawNow ? "#36d399" : "#24242a",
-                        borderColor: canDrawNow ? "#36d399" : "#2f2f36",
-                        color: canDrawNow ? "#ffffff" : "#a8a8b3",
-                    }),
-                ...((drawn || canDrawNow) ? {} : styles.btnDisabled),
-            }}
-        >
-            {drawn ? "Discard Draw" : "Draw"}
-        </button>
-    </div>
-
+  <button
+    onClick={drawn ? onDiscardDrawn : onDraw}
+    disabled={bombOverlay || isSpinning || (!drawn && !canDraw)}
+    style={{
+      ...styles.btnPrimary,
+      ...styles.drawBtnSmall,
+      ...(drawn
+        ? { background: "#24242a", borderColor: "#2f2f36", color: "#f5f5f5" }
+        : {
+            background: canDraw ? "#36d399" : "#24242a",
+            borderColor: canDraw ? "#36d399" : "#2f2f36",
+            color: canDraw ? "#08110d" : "#a8a8b3",
+          }),
+      ...((drawn || canDraw) ? {} : styles.btnDisabled),
+    }}
+  >
+    {drawn ? "Discard" : "Draw"}
+  </button>
+</div>
 
           {gameOver ? (
             <div style={{ ...styles.toast, marginTop: 12 }}>
               <div style={{ fontWeight: 900 }}>Game over — {DRAWS_MAX} draws used</div>
               {/*<div style={{ color: "#a8a8b3", marginTop: 4 }}>Final score: {score}</div>*/}
+              <button onClick={resetGame} style={{ ...styles.btnPrimary, width: "100%", marginTop: 10 }}>
+                Play again
+              </button>
             </div>
           ) : null}
 
@@ -842,9 +797,6 @@ export default function SlotsSolitaire() {
         {/*    <div>• You can score multiple times between draws (“let it ride”).</div>*/}
         {/*  </div>*/}
         </div>
-          </>
-        )}
-
       </div>
     </div>
   );

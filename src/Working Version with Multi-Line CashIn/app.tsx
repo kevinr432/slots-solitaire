@@ -60,9 +60,6 @@ const ASSET_MAP: Record<SymbolKey, string> = {
 // Put your image at: public/assets/cardback.png
 const CARD_BACK_SRC = "/assets/cardback.png";
 
-// Help screen image (place the attached graphic at: /public/Score.png)
-const HELP_IMAGE_SRC = "/assets/Score.png";
-
 const LABEL: Record<SymbolKey, string> = {
   crown: "Crown (Wild)",
   diamond: "Diamond",
@@ -155,8 +152,6 @@ export default function SlotsSolitaire() {
   const [, setLog] = useState<LogItem[]>([]);
 
   const [bombOverlay, setBombOverlay] = useState(false);
-
-  const [showHelp, setShowHelp] = useState(false);
 
   // Dealing animation (slot-style spin) — shows random symbols briefly before committing the real card(s)
   const SPIN_MS = 500;
@@ -675,37 +670,9 @@ export default function SlotsSolitaire() {
           </button>
         </header>
 
-        {showHelp ? (
-          <div style={styles.helpScreen}>
-                      <img
-                          src={HELP_IMAGE_SRC}
-                          style={{
-                              maxWidth: "100%",
-                              maxHeight: "80vh",
-                              width: "auto",
-                              height: "auto",
-                              objectFit: "contain"
-                          }}
-                      />
-            <button style={styles.helpCloseBtn} onClick={() => setShowHelp(false)}>
-              Close
-            </button>
-          </div>
-        ) : (
-          <>
         <div style={styles.stats}>
           <Stat label="Score" value={score.toString()} />
-            <Stat label="Draws" value={`${drawsUsed}/${DRAWS_MAX}`} />
-                              <button
-                                  onClick={() => setShowHelp(true)}
-                                  style={{
-                                      ...styles.btnPrimary,
-                                      padding: "10px 16px",
-                                      fontSize: 20   // larger text
-                                  }}
-                              >
-                                  HELP
-                              </button>
+          <Stat label="Draws" value={`${drawsUsed}/${DRAWS_MAX}`} />
         {/*  <Stat label="Remaining Cards In Deck" value={`${deck.length}`} />*/}
         </div>
 
@@ -842,9 +809,6 @@ export default function SlotsSolitaire() {
         {/*    <div>• You can score multiple times between draws (“let it ride”).</div>*/}
         {/*  </div>*/}
         </div>
-          </>
-        )}
-
       </div>
     </div>
   );
