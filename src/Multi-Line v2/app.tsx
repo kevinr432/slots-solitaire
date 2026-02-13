@@ -245,20 +245,6 @@ export default function SlotsSolitaire() {
     return { ok: true, points, label };
   }, [selected.length, winningLines]);
 
-  // Possible wins currently visible on the grid (independent of the user's selection).
-  // Used to avoid ending the game while there are still scoreable 3-in-a-row lines available.
-  const possibleWins = useMemo(() => {
-    const out: { line: number[]; points: number; label: string }[] = [];
-    for (const ln of LINES) {
-      const cards = ln.map((i) => grid[i]).filter(Boolean) as Card[];
-      if (cards.length !== 3) continue;
-      const ev = evaluateLine(cards);
-      if (!ev.ok) continue;
-      out.push({ line: ln, points: ev.points, label: ev.label });
-    }
-    return out;
-  }, [grid]);
-
   function pushLog(text: string) {
     setLog((l) => clampLog([...l, { id: uid("log"), ts: Date.now(), text }], 12));
   }
@@ -510,7 +496,7 @@ export default function SlotsSolitaire() {
     setSelected([]);
   }
 
-  const gameOver = drawsUsed >= DRAWS_MAX && drawn === null && possibleWins.length === 0;
+  const gameOver = drawsUsed >= DRAWS_MAX && drawn === null;
 
   // ---------- Styles (no Tailwind required) ----------
   const styles = {
@@ -611,34 +597,6 @@ export default function SlotsSolitaire() {
           filter: "drop-shadow(0 10px 18px rgba(0,0,0,0.45))",
       },
 
-      gameOverOverlay: {
-          position: "absolute",
-          inset: 0,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "rgba(0,0,0,0.78)",
-          textAlign: "center" as const,
-          padding: 18,
-          zIndex: 20,
-          borderRadius: 12,
-      },
-
-      gameOverOverlayInner: {
-          maxWidth: 560,
-          background: "rgba(17,17,17,0.92)",
-          border: "1px solid rgba(255,255,255,0.10)",
-          borderRadius: 12,
-          padding: 18,
-          boxShadow: "0 14px 32px rgba(0,0,0,0.45)",
-      },
-
-      gameOverLink: {
-          fontWeight: 1000,
-          fontSize: 20,
-          textDecoration: "underline",
-          color: "#ffffff",
-      },
       bombOverlayText: {
           fontSize: 34,
           fontWeight: 1000,
@@ -818,30 +776,6 @@ export default function SlotsSolitaire() {
               {/*<div style={styles.bombOverlayText}>BOMB!</div>*/}
             </div>
           ) : null}
-
-          {gameOver ? (
-            <div style={styles.gameOverOverlay} aria-label="Game over message">
-              <div style={styles.gameOverOverlayInner}>
-                <div style={{ fontWeight: 1000, fontSize: 22, marginBottom: 12 }}>
-                  Game over — {DRAWS_MAX} draws used
-                </div>
-                <div style={{ fontSize: 18, lineHeight: 1.5 }}>
-                  If you like the online solitaire version of SLOTS, you will love the card game you can play at home with your friends.
-                  <div style={{ marginTop: 10 }}>
-                    <a
-                      href="https://www.paypal.com/ncp/payment/MFFFMRR4JAQBL"
-                      target="_blank"
-                      rel="noreferrer"
-                      style={styles.gameOverLink}
-                    >
-                      Click Here
-                    </a>{" "}
-                    to order the game.
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : null}
         </div>
 
           {/* Controls */}
@@ -905,6 +839,15 @@ export default function SlotsSolitaire() {
             {drawn ? "Discard Draw" : "Draw"}
         </button>
     </div>
+
+
+          {gameOver ? (
+            <div style={{ ...styles.toast, marginTop: 12 }}>
+              <div style={{ fontWeight: 900 }}>Game over — {DRAWS_MAX} draws used</div>
+              {/*<div style={{ color: "#a8a8b3", marginTop: 4 }}>Final score: {score}</div>*/}
+            </div>
+          ) : null}
+
         {/*  <div style={{ marginTop: 12, fontSize: 12, color: "#a8a8b3", lineHeight: 1.5 }}>*/}
         {/*    <div style={{ fontWeight: 900, color: "#d8d8de", marginBottom: 6 }}>Rules</div>*/}
         {/*    <div>• Select exactly 3 cards in a straight line, then press <strong>Cash In</strong>.</div>*/}
