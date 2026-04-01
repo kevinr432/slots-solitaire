@@ -31,34 +31,6 @@ function playCoinDrop() {
 }
 
 
-const STATS_KEY = "slots_solitaire_stats";
-
-type GameStats = {
-  plays: number;
-  highScore: number;
-  totalScore: number;
-};
-
-function loadStats(): GameStats {
-  try {
-    const raw = localStorage.getItem(STATS_KEY);
-    if (!raw) return { plays: 0, highScore: 0, totalScore: 0 };
-    const parsed = JSON.parse(raw);
-    return {
-      plays: Number(parsed.plays) || 0,
-      highScore: Number(parsed.highScore) || 0,
-      totalScore: Number(parsed.totalScore) || 0,
-    };
-  } catch {
-    return { plays: 0, highScore: 0, totalScore: 0 };
-  }
-}
-
-function saveStats(stats: GameStats) {
-  localStorage.setItem(STATS_KEY, JSON.stringify(stats));
-}
-
-
 const DRAWS_MAX = 25;
 const GRID_SIZE = 9;
 
@@ -209,8 +181,6 @@ export default function SlotsSolitaire() {
   const [bombOverlay, setBombOverlay] = useState(false);
 
   const [showHelp, setShowHelp] = useState(false);
-  const [stats, setStats] = useState<GameStats>({ plays: 0, highScore: 0, totalScore: 0 });
-  const [gameRecorded, setGameRecorded] = useState(false);
 
   // Dealing animation (slot-style spin) — shows random symbols briefly before committing the real card(s)
   const SPIN_MS = 500;
@@ -352,7 +322,6 @@ export default function SlotsSolitaire() {
       bombTimer.current = null;
     }
     setBombOverlay(false);
-    setGameRecorded(false);
 
     // Build a fresh shuffled deck and deal the initial 9 cards.
     const d = shuffle(buildDeck());
@@ -392,10 +361,6 @@ export default function SlotsSolitaire() {
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  useEffect(() => {
-    setStats(loadStats());
   }, []);
 
     function triggerBomb(reason: string) {
@@ -579,21 +544,6 @@ export default function SlotsSolitaire() {
   }
 
   const gameOver = drawsUsed >= DRAWS_MAX && drawn === null && possibleWins.length === 0;
-  const averageScore = stats.plays > 0 ? Math.round(stats.totalScore / stats.plays) : 0;
-
-  useEffect(() => {
-    if (!gameOver || gameRecorded) return;
-
-    const updated: GameStats = {
-      plays: stats.plays + 1,
-      highScore: Math.max(stats.highScore, score),
-      totalScore: stats.totalScore + score,
-    };
-
-    setStats(updated);
-    saveStats(updated);
-    setGameRecorded(true);
-  }, [gameOver, gameRecorded, score, stats]);
 
   // ---------- Styles (no Tailwind required) ----------
   const styles = {
@@ -920,12 +870,6 @@ export default function SlotsSolitaire() {
                       Click Here
                     </a>{" "}
                     to order the game.
-                  </div>
-
-                  <div style={{ marginTop: 16, fontSize: 16, lineHeight: 1.7 }}>
-                    <div>Number of Plays: {stats.plays}</div>
-                    <div>High Score: {stats.highScore}</div>
-                    <div>Average Score: {averageScore}</div>
                   </div>
                 </div>
               </div>
