@@ -10,13 +10,25 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
 
 
 // --- SOUND EFFECTS ---
-const dealSound = new Audio("/assets/CardBeingDealt.mp3");
 const sadTrombone = new Audio("/assets/SadTrombone.mp3");
-
-// Optional: keep volume reasonable
-dealSound.volume = 0.5;
 sadTrombone.volume = 0.6;
 
+function playDealSound() {
+    const sound = new Audio("/assets/CardBeingDealt.mp3");
+    sound.volume = 0.5;
+    sound.play().catch(() => { });
+}
+
+function playSadTrombone() {
+    sadTrombone.currentTime = 0;
+    sadTrombone.play().catch(() => { });
+}
+
+function playCoinDrop() {
+    const sound = new Audio("/assets/CoinDrop.mp3");
+    sound.volume = 0.6;
+    sound.play().catch(() => { });
+}
 
 
 const DRAWS_MAX = 25;
@@ -351,10 +363,9 @@ export default function SlotsSolitaire() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function triggerBomb(reason: string) {
+    function triggerBomb(reason: string) {
 
-    sadTrombone.currentTime = 0;
-    sadTrombone.play();
+    playSadTrombone();
 
     // Prevent re-entrancy while an animation is already running
     if (bombTimer.current) return;
@@ -409,8 +420,7 @@ export default function SlotsSolitaire() {
     if (!canDraw) return;
 
     // 🔊 PLAY DEAL SOUND
-    dealSound.currentTime = 0;
-    dealSound.play();
+    playDealSound();
 
     setDrawsUsed((x) => x + 1);
 
@@ -484,6 +494,9 @@ export default function SlotsSolitaire() {
   function onScoreSelected() {
     if (drawn || bombOverlay) return;
     if (winningLines.length === 0) return;
+
+    // 🔊 PLAY COIN DROP
+    playCoinDrop();
 
     // Score all winning lines contained in the selection.
     // Note: overlapping lines are allowed; shared cards only get discarded/replaced once.
