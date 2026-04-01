@@ -7,18 +7,6 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
  *   crown.png, diamond.png, present.png, seven.png, bar.png, cherry.png, jewel.png, bomb.png
  */
 
-
-
-// --- SOUND EFFECTS ---
-const dealSound = new Audio("/assets/CardBeingDealt.mp3");
-const sadTrombone = new Audio("/assets/SadTrombone.mp3");
-
-// Optional: keep volume reasonable
-dealSound.volume = 0.5;
-sadTrombone.volume = 0.6;
-
-
-
 const DRAWS_MAX = 25;
 const GRID_SIZE = 9;
 
@@ -352,10 +340,6 @@ export default function SlotsSolitaire() {
   }, []);
 
   function triggerBomb(reason: string) {
-
-    sadTrombone.currentTime = 0;
-    sadTrombone.play();
-
     // Prevent re-entrancy while an animation is already running
     if (bombTimer.current) return;
 
@@ -407,10 +391,6 @@ export default function SlotsSolitaire() {
   function onDraw() {
     if (bombOverlay || isSpinning) return;
     if (!canDraw) return;
-
-    // 🔊 PLAY DEAL SOUND
-    dealSound.currentTime = 0;
-    dealSound.play();
 
     setDrawsUsed((x) => x + 1);
 
