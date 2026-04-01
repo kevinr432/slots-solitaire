@@ -906,7 +906,7 @@ export default function SlotsSolitaire() {
             <div style={styles.gameOverOverlay} aria-label="Game over message">
               <div style={styles.gameOverOverlayInner}>
                 <div style={{ fontWeight: 1000, fontSize: 22, marginBottom: 12 }}>
-                  Game over — {DRAWS_MAX} draws used
+                  Game Over
                 </div>
                 <div style={{ fontSize: 18, lineHeight: 1.5 }}>
                   If you like the online solitaire version of SLOTS, you will love the card game you can play at home with your friends.
@@ -922,7 +922,7 @@ export default function SlotsSolitaire() {
                     to order the game.
                   </div>
 
-                  <div style={{ marginTop: 16, fontSize: 16, lineHeight: 1.7 }}>
+                  <div style={{ marginTop: 16, fontSize: 18, lineHeight: 1.8 }}>
                     <div>Number of Plays: {stats.plays}</div>
                     <div>High Score: {stats.highScore}</div>
                     <div>Average Score: {averageScore}</div>
