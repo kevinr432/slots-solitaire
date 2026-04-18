@@ -212,25 +212,6 @@ export default function SlotsSolitaire() {
   const [stats, setStats] = useState<GameStats>({ plays: 0, highScore: 0, totalScore: 0 });
   const [gameRecorded, setGameRecorded] = useState(false);
 
-  async function handleShareGame() {
-    const gameUrl = window.location.href;
-
-    try {
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(gameUrl);
-        window.alert("The game link has been copied. Please paste it into a text message or email to share it with your friends.");
-        return;
-      }
-    } catch (err) {
-      console.error("Clipboard copy failed:", err);
-    }
-
-    window.prompt(
-      "Copy this link and paste it into a text message or email:",
-      gameUrl
-    );
-  }
-
   // Dealing animation (slot-style spin) — shows random symbols briefly before committing the real card(s)
   const SPIN_MS = 500;
   const SPIN_TICK_MS = 60;
@@ -741,19 +722,6 @@ export default function SlotsSolitaire() {
           textDecoration: "underline",
           color: "#ffffff",
       },
-      gameOverShareButton: {
-          marginTop: 18,
-          background: "#36d399",
-          border: "1px solid #36d399",
-          color: "#ffffff",
-          padding: "12px 16px",
-          borderRadius: 14,
-          fontWeight: 900,
-          fontSize: 18,
-          cursor: "pointer",
-          width: "100%",
-          maxWidth: 320,
-      },
       bombOverlayText: {
           fontSize: 34,
           fontWeight: 1000,
@@ -958,15 +926,6 @@ export default function SlotsSolitaire() {
                     <div>Number of Plays: {stats.plays}</div>
                     <div>High Score: {stats.highScore}</div>
                     <div>Average Score: {averageScore}</div>
-                  </div>
-
-                  <div style={{ display: "flex", justifyContent: "center" }}>
-                    <button
-                      onClick={handleShareGame}
-                      style={styles.gameOverShareButton}
-                    >
-                      Share With a Friend
-                    </button>
                   </div>
                 </div>
               </div>
