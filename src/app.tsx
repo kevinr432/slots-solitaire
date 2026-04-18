@@ -218,7 +218,7 @@ export default function SlotsSolitaire() {
     try {
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(gameUrl);
-        window.alert("The game link has been copied. Please paste it into a text message or email to share it with your friends.");
+        window.alert("A shareable link to the game has been copied.  Now simply paste it into a text message, messenger message, or email to share it with your friends.");
         return;
       }
     } catch (err) {
@@ -229,6 +229,15 @@ export default function SlotsSolitaire() {
       "Copy this link and paste it into a text message or email:",
       gameUrl
     );
+  }
+
+  function forceGameOver() {
+    if (bombOverlay || isSpinning) return;
+    setDrawn(null);
+    setSelected([]);
+    setDrawsUsed(DRAWS_MAX);
+    setGrid((g) => g.map(() => null));
+    pushLog("Forced Game Over for testing.");
   }
 
   // Dealing animation (slot-style spin) — shows random symbols briefly before committing the real card(s)
@@ -728,21 +737,50 @@ export default function SlotsSolitaire() {
 
       gameOverOverlayInner: {
           maxWidth: 560,
-          background: "rgba(17,17,17,0.92)",
+          width: "100%",
+          background: "rgba(17,17,17,0.94)",
           border: "1px solid rgba(255,255,255,0.10)",
-          borderRadius: 12,
-          padding: 18,
+          borderRadius: 18,
+          padding: 22,
           boxShadow: "0 14px 32px rgba(0,0,0,0.45)",
       },
 
-      gameOverLink: {
+      gameOverTitle: {
           fontWeight: 1000,
-          fontSize: 20,
-          textDecoration: "underline",
-          color: "#ffffff",
-      },
-      gameOverShareButton: {
+          fontSize: 24,
+          marginBottom: 10,
+      } as React.CSSProperties,
+      gameOverText: {
+          fontSize: 17,
+          lineHeight: 1.5,
+          color: "#f5f5f5",
+      } as React.CSSProperties,
+      gameOverStats: {
           marginTop: 18,
+          marginBottom: 18,
+          fontSize: 17,
+          lineHeight: 1.8,
+      } as React.CSSProperties,
+      gameOverButtons: {
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 12,
+          marginTop: 8,
+      } as React.CSSProperties,
+      gameOverShareButton: {
+          background: "#36d399",
+          border: "1px solid #36d399",
+          color: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: 14,
+          fontWeight: 900,
+          fontSize: 18,
+          cursor: "pointer",
+          width: "100%",
+          maxWidth: 320,
+      },
+      gameOverOrderButton: {
           background: "#36d399",
           border: "1px solid #36d399",
           color: "#ffffff",
@@ -828,9 +866,12 @@ export default function SlotsSolitaire() {
             <h1 style={styles.h1}>SLOTS Solitaire</h1>
           {/*  <p style={styles.sub}>Mobile-first • Single player • Manual scoring</p>*/}
           </div>
-          <button style={styles.btn} onClick={resetGame}>
-            New Game
-          </button>
+          <div style={{ display: "flex", gap: 8 }}>
+            
+            <button style={styles.btn} onClick={resetGame}>
+              New Game
+            </button>
+          </div>
         </header>
 
         {showHelp ? (
@@ -937,37 +978,36 @@ export default function SlotsSolitaire() {
           {gameOver ? (
             <div style={styles.gameOverOverlay} aria-label="Game over message">
               <div style={styles.gameOverOverlayInner}>
-                <div style={{ fontWeight: 1000, fontSize: 22, marginBottom: 12 }}>
-                  Game Over
+                <div style={styles.gameOverTitle}>Great Game!</div>
+
+                <div style={styles.gameOverStats}>
+                  <div>Number of Plays: {stats.plays}</div>
+                  <div>High Score: {stats.highScore}</div>
+                  <div>Average Score: {averageScore}</div>
                 </div>
-                <div style={{ fontSize: 18, lineHeight: 1.5 }}>
-                  If you like the online solitaire version of SLOTS, you will love the card game you can play at home with your friends.
-                  <div style={{ marginTop: 10 }}>
-                    <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
-                        <button
-                            onClick={() => window.open("https://www.paypal.com/ncp/payment/MFFFMRR4JAQBL", "_blank")}
-                            style={styles.gameOverShareButton}
-                        >
-                            Order the Game
-                        </button>
-                    </div>{" "}
-                    to order the game.
-                  </div>
 
-                  <div style={{ marginTop: 16, fontSize: 18, lineHeight: 1.8 }}>
-                    <div>Number of Plays: {stats.plays}</div>
-                    <div>High Score: {stats.highScore}</div>
-                    <div>Average Score: {averageScore}</div>
-                  </div>
+                <div style={styles.gameOverText}>
+                    Share the free SLOTS Solitaire version with a friend.   Buy the multi-player card game version to play with friends at home.
+                </div>
 
-                  <div style={{ display: "flex", justifyContent: "center" }}>
-                    <button
-                      onClick={handleShareGame}
-                      style={styles.gameOverShareButton}
-                    >
-                      Share With a Friend
-                    </button>
-                  </div>
+                <div style={styles.gameOverButtons}>
+
+                  <button
+                    onClick={handleShareGame}
+                    style={styles.gameOverShareButton}
+                  >
+                    Share With a Friend
+                  </button>
+
+                  <button
+                    onClick={() => window.open("https://www.paypal.com/ncp/payment/MFFFMRR4JAQBL", "_blank")}
+                    style={styles.gameOverOrderButton}
+                  >
+                    Buy the Card Game
+                  </button>
+
+
+
                 </div>
               </div>
             </div>
