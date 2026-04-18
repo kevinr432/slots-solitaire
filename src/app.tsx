@@ -867,7 +867,9 @@ export default function SlotsSolitaire() {
           {/*  <p style={styles.sub}>Mobile-first • Single player • Manual scoring</p>*/}
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            
+            <button style={styles.btn} onClick={forceGameOver}>
+              Test Game Over
+            </button>
             <button style={styles.btn} onClick={resetGame}>
               New Game
             </button>
