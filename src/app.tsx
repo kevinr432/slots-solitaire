@@ -943,14 +943,14 @@ export default function SlotsSolitaire() {
                 <div style={{ fontSize: 18, lineHeight: 1.5 }}>
                   If you like the online solitaire version of SLOTS, you will love the card game you can play at home with your friends.
                   <div style={{ marginTop: 10 }}>
-                    <a
-                      href="https://www.paypal.com/ncp/payment/MFFFMRR4JAQBL"
-                      target="_blank"
-                      rel="noreferrer"
-                      style={styles.gameOverLink}
-                    >
-                      Click Here
-                    </a>{" "}
+                    <div style={{ marginTop: 14, display: "flex", justifyContent: "center" }}>
+                        <button
+                            onClick={() => window.open("https://www.paypal.com/ncp/payment/MFFFMRR4JAQBL", "_blank")}
+                            style={styles.gameOverShareButton}
+                        >
+                            Order the Game
+                        </button>
+                    </div>{" "}
                     to order the game.
                   </div>
 
