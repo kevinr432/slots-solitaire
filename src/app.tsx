@@ -1001,6 +1001,7 @@ export default function SlotsSolitaire() {
                   <div>Number of Plays: {stats.plays}</div>
                   <div>High Score: {stats.highScore}</div>
                   <div>Average Score: {averageScore}</div>
+                  <div>v2.003</div>
                 </div>
 
                 <div style={styles.gameOverText}>
