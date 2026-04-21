@@ -878,7 +878,7 @@ export default function SlotsSolitaire() {
       <div style={styles.container}>
         <header style={{ ...styles.row, marginBottom: 10 }}>
           <div>
-            <h1 style={styles.h1}>SLOTS Solitaire</h1>
+            <h1 style={styles.h1}>SLOTS Solitaire v2</h1>
           {/*  <p style={styles.sub}>Mobile-first • Single player • Manual scoring</p>*/}
           </div>
           <div style={{ display: "flex", gap: 8 }}>
@@ -1000,7 +1000,6 @@ export default function SlotsSolitaire() {
                 <div style={styles.gameOverStats}>
                   <div>Number of Plays: {stats.plays}</div>
                   <div>High Score: {stats.highScore}</div>
-                  <div>Average Score: {averageScore}</div>
                   <div>v2.003</div>
                 </div>
 
