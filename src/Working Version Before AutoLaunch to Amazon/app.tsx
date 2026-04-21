@@ -609,9 +609,6 @@ export default function SlotsSolitaire() {
   const gameOver = drawsUsed >= DRAWS_MAX && drawn === null && possibleWins.length === 0;
   const averageScore = stats.plays > 0 ? Math.round(stats.totalScore / stats.plays) : 0;
 
-
-
-
   useEffect(() => {
     if (!gameOver || gameRecorded) return;
 
@@ -624,19 +621,7 @@ export default function SlotsSolitaire() {
     setStats(updated);
     saveStats(updated);
     setGameRecorded(true);
-
-    if ((stats.plays + 1) % 1 === 0) {
-        setTimeout(() => {
-            window.location.assign("https://www.amazon.com/dp/B0GDP6YTM9");
-        }, 3000);
-    }
-
   }, [gameOver, gameRecorded, score, stats]);
-
-
-
-
-
 
   // ---------- Styles (no Tailwind required) ----------
   const styles = {
