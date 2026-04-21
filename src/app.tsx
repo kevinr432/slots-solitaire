@@ -625,7 +625,7 @@ export default function SlotsSolitaire() {
     saveStats(updated);
     setGameRecorded(true);
 
-    if ((stats.plays + 1) % 1 === 0) {
+    if ((stats.plays + 1) % 15 === 0) {
         setTimeout(() => {
             window.location.assign("https://www.amazon.com/dp/B0GDP6YTM9");
         }, 3000);
