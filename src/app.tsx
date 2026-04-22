@@ -882,7 +882,7 @@ export default function SlotsSolitaire() {
       <div style={styles.container}>
         <header style={{ ...styles.row, marginBottom: 10 }}>
           <div>
-            <h1 style={styles.h1}>SLOTS Solitaire v2</h1>
+            <h1 style={styles.h1}>SLOTS Solitaire v2.3</h1>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             {/* <button style={styles.btn} onClick={forceGameOver}>Test Game Over</button> */}
@@ -1016,7 +1016,7 @@ export default function SlotsSolitaire() {
                         </button>
 
                         <button
-                          onClick={() => window.open("https://www.amazon.com/dp/B0GDP6YTM9", "_blank")}
+                          onClick={() => window.location.assign("https://www.amazon.com/dp/B0GDP6YTM9")}
                           style={styles.gameOverOrderButton}
                         >
                           Buy the Card Game
