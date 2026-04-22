@@ -5,33 +5,33 @@ import React, { useEffect, useMemo, useRef, useState } from "react";
  *
  * Assets expected in: /public/assets/
  *   crown.png, diamond.png, present.png, seven.png, bar.png, cherry.png, jewel.png, bomb.png
+ *   cardback.png, Score.png, splash.png
  */
-
-
 
 // --- SOUND EFFECTS ---
 const sadTrombone = new Audio("/assets/SadTrombone.mp3");
 sadTrombone.volume = 0.6;
 
 function playDealSound() {
-    const sound = new Audio("/assets/CardBeingDealt.mp3");
-    sound.volume = 0.5;
-    sound.play().catch(() => { });
+  const sound = new Audio("/assets/CardBeingDealt.mp3");
+  sound.volume = 0.5;
+  sound.play().catch(() => {});
 }
 
 function playSadTrombone() {
-    sadTrombone.currentTime = 0;
-    sadTrombone.play().catch(() => { });
+  sadTrombone.currentTime = 0;
+  sadTrombone.play().catch(() => {});
 }
 
 function playCoinDrop() {
-    const sound = new Audio("/assets/CoinDrop.mp3");
-    sound.volume = 0.6;
-    sound.play().catch(() => { });
+  const sound = new Audio("/assets/CoinDrop.mp3");
+  sound.volume = 0.6;
+  sound.play().catch(() => {});
 }
 
-
 const STATS_KEY = "slots_solitaire_stats";
+const SPLASH_SRC = "/assets/splash.png";
+const SPLASH_MS = 2500;
 
 type GameStats = {
   plays: number;
@@ -57,7 +57,6 @@ function loadStats(): GameStats {
 function saveStats(stats: GameStats) {
   localStorage.setItem(STATS_KEY, JSON.stringify(stats));
 }
-
 
 const DRAWS_MAX = 25;
 const GRID_SIZE = 9;
@@ -109,10 +108,9 @@ const ASSET_MAP: Record<SymbolKey, string> = {
 };
 
 // Card back (deck) image shown when no drawn card is pending.
-// Put your image at: public/assets/cardback.png
 const CARD_BACK_SRC = "/assets/cardback.png";
 
-// Help screen image (place the attached graphic at: /public/Score.png)
+// Help screen image
 const HELP_IMAGE_SRC = "/assets/Score.png";
 
 const LABEL: Record<SymbolKey, string> = {
@@ -159,12 +157,6 @@ function shuffle<T>(arr: T[]): T[] {
   return a;
 }
 
-function isLine(selection: number[]): boolean {
-  if (selection.length !== 3) return false;
-  const s = selection.slice().sort((a, b) => a - b);
-  return LINES.some((ln) => ln[0] === s[0] && ln[1] === s[1] && ln[2] === s[2]);
-}
-
 function evaluateLine(cards: Card[]): { ok: boolean; points: number; label: string } {
   if (cards.some((c) => c.sym === "bomb")) return { ok: false, points: 0, label: "Bombs can’t be scored" };
 
@@ -207,10 +199,15 @@ export default function SlotsSolitaire() {
   const [, setLog] = useState<LogItem[]>([]);
 
   const [bombOverlay, setBombOverlay] = useState(false);
-
+  const [showSplash, setShowSplash] = useState(true);
   const [showHelp, setShowHelp] = useState(false);
   const [stats, setStats] = useState<GameStats>({ plays: 0, highScore: 0, totalScore: 0 });
   const [gameRecorded, setGameRecorded] = useState(false);
+
+  const splashTimer = useRef<number | null>(null);
+  const bombTimer = useRef<number | null>(null);
+  const deckRef = useRef<Card[]>([]);
+  const discardRef = useRef<Card[]>([]);
 
   async function handleShareGame() {
     const gameUrl = window.location.href;
@@ -218,29 +215,27 @@ export default function SlotsSolitaire() {
     try {
       if (navigator.clipboard && window.isSecureContext) {
         await navigator.clipboard.writeText(gameUrl);
-        window.alert("A shareable link to the game has been copied.  Now simply paste it into a text message, messenger message, or email to share it with your friends.");
+        window.alert(
+          "A shareable link to the game has been copied. Now simply paste it into a text message, messenger message, or email to share it with your friends."
+        );
         return;
       }
     } catch (err) {
       console.error("Clipboard copy failed:", err);
     }
 
-    window.prompt(
-      "Copy this link and paste it into a text message or email:",
-      gameUrl
-    );
+    window.prompt("Copy this link and paste it into a text message or email:", gameUrl);
   }
 
   function forceGameOver() {
-    if (bombOverlay || isSpinning) return;
+    if (bombOverlay || isSpinning || showSplash) return;
     setDrawn(null);
     setSelected([]);
     setDrawsUsed(DRAWS_MAX);
-    setGrid((g) => g.map(() => null));
     pushLog("Forced Game Over for testing.");
   }
 
-  // Dealing animation (slot-style spin) — shows random symbols briefly before committing the real card(s)
+  // Dealing animation (slot-style spin)
   const SPIN_MS = 500;
   const SPIN_TICK_MS = 60;
   const SYMBOL_KEYS = useMemo(() => Object.keys(DECK_COUNTS) as SymbolKey[], []);
@@ -266,11 +261,9 @@ export default function SlotsSolitaire() {
   }
 
   function spinCells(indices: number[], commit: () => void) {
-    // Prevent overlapping spins
     stopSpinTimers();
     setIsSpinning(true);
 
-    // Prime with an initial symbol so it instantly shows
     setSpinSyms((prev) => {
       const next = prev.slice();
       for (const i of indices) next[i] = randomSym();
@@ -296,14 +289,13 @@ export default function SlotsSolitaire() {
       commit();
     }, SPIN_MS);
   }
-  const bombTimer = useRef<number | null>(null);
 
   const canDraw = drawsUsed < DRAWS_MAX && drawn === null;
   const hasCashSelection = selected.length > 0;
   const canDrawNow = canDraw && !hasCashSelection;
+  const boardLocked = bombOverlay || isSpinning || showSplash;
 
-  // Multi-line scoring: the player can select any number of cards and we will
-  // cash in *all* complete winning lines that are contained within the selection.
+  // Multi-line scoring
   const winningLines = useMemo(() => {
     if (selected.length < 3) return [] as { line: number[]; points: number; label: string }[];
     const sel = new Set(selected);
@@ -327,8 +319,7 @@ export default function SlotsSolitaire() {
     return { ok: true, points, label };
   }, [selected.length, winningLines]);
 
-  // Possible wins currently visible on the grid (independent of the user's selection).
-  // Used to avoid ending the game while there are still scoreable 3-in-a-row lines available.
+  // All currently available wins still visible on the board.
   const possibleWins = useMemo(() => {
     const out: { line: number[]; points: number; label: string }[] = [];
     for (const ln of LINES) {
@@ -374,40 +365,54 @@ export default function SlotsSolitaire() {
     return { cards: out, deck: d, discard: dc };
   }
 
-  function resetGame() {
-    if (bombTimer.current) {
-      window.clearTimeout(bombTimer.current);
-      bombTimer.current = null;
-    }
-    setBombOverlay(false);
-    setGameRecorded(false);
-
-    // Build a fresh shuffled deck and deal the initial 9 cards.
+  function beginInitialDeal() {
     const d = shuffle(buildDeck());
     const dealt = dealN(9, d, []);
 
-    // Reset core state immediately.
     setDeck(dealt.deck);
     setDiscard(dealt.discard);
     setDrawn(null);
     setDrawsUsed(0);
     setScore(0);
     setSelected([]);
+    setGrid(Array(GRID_SIZE).fill(null));
+    setSpinSyms(Array(GRID_SIZE).fill(null));
     setLog([]);
     pushLog("New game started");
 
-    // Slot-style spin animation for the initial deal (all 9 cells).
-    spinCells(
-      Array.from({ length: GRID_SIZE }, (_, i) => i),
-      () => {
-        setGrid(dealt.cards);
-
-        // If a bomb is present on the initial deal, trigger it AFTER the deal animation commits.
-        if (dealt.cards.some((c) => c.sym === "bomb")) {
-          triggerBomb("Bomb appeared on deal");
-        }
+    spinCells(Array.from({ length: GRID_SIZE }, (_, i) => i), () => {
+      setGrid(dealt.cards);
+      if (dealt.cards.some((c) => c.sym === "bomb")) {
+        triggerBomb("Bomb appeared on deal");
       }
-    );
+    });
+  }
+
+  function resetGame() {
+    if (bombTimer.current) {
+      window.clearTimeout(bombTimer.current);
+      bombTimer.current = null;
+    }
+    if (splashTimer.current) {
+      window.clearTimeout(splashTimer.current);
+      splashTimer.current = null;
+    }
+
+    stopSpinTimers();
+    setBombOverlay(false);
+    setGameRecorded(false);
+    setDrawn(null);
+    setSelected([]);
+    setGrid(Array(GRID_SIZE).fill(null));
+    setSpinSyms(Array(GRID_SIZE).fill(null));
+    setShowHelp(false);
+    setShowSplash(true);
+
+    splashTimer.current = window.setTimeout(() => {
+      setShowSplash(false);
+      beginInitialDeal();
+      splashTimer.current = null;
+    }, SPLASH_MS);
   }
 
   useEffect(() => {
@@ -418,6 +423,10 @@ export default function SlotsSolitaire() {
         window.clearTimeout(bombTimer.current);
         bombTimer.current = null;
       }
+      if (splashTimer.current) {
+        window.clearTimeout(splashTimer.current);
+        splashTimer.current = null;
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -426,68 +435,70 @@ export default function SlotsSolitaire() {
     setStats(loadStats());
   }, []);
 
-    function triggerBomb(reason: string) {
+  useEffect(() => {
+    deckRef.current = deck;
+  }, [deck]);
 
+  useEffect(() => {
+    discardRef.current = discard;
+  }, [discard]);
+
+  function triggerBomb(reason: string) {
     playSadTrombone();
 
-    // Prevent re-entrancy while an animation is already running
     if (bombTimer.current) return;
 
     setSelected([]);
     setDrawn(null);
     setBombOverlay(true);
 
-    // After a short "BOOM" overlay, wipe + redeal
     bombTimer.current = window.setTimeout(() => {
-      // Move all grid cards to discard, clear grid
       setGrid((g) => {
         const toDiscard = g.filter(Boolean) as Card[];
         setDiscard((dc) => [...dc, ...toDiscard]);
         return Array(GRID_SIZE).fill(null);
       });
 
-      // Redeal 9 using current deck+discard (spin all 9 cells together)
       setDeck((curDeck) => {
         queueMicrotask(() => {
           setDiscard((curDiscard) => {
             const ensured = ensureDeckAvailable(curDeck, curDiscard);
             const dealt = dealN(9, ensured.d, ensured.dc);
 
-            // Apply deck/discard immediately, but delay showing the dealt cards until after the spin animation
             setDeck(dealt.deck);
             setDiscard(dealt.discard);
-
-            // Hide the big bomb overlay, then spin all 9 and commit the redeal
             setBombOverlay(false);
+
             const all = Array.from({ length: GRID_SIZE }, (_, i) => i);
             spinCells(all, () => {
               setGrid(dealt.cards);
-              if (dealt.cards.some((c) => c.sym === "bomb")) queueMicrotask(() => triggerBomb("Bomb appeared on redeal"));
+              if (dealt.cards.some((c) => c.sym === "bomb")) {
+                queueMicrotask(() => triggerBomb("Bomb appeared on redeal"));
+              }
             });
 
-            // Clear bomb timer (overlay timer)
-            window.clearTimeout(bombTimer.current!);
-            bombTimer.current = null;
+            if (bombTimer.current) {
+              window.clearTimeout(bombTimer.current);
+              bombTimer.current = null;
+            }
 
             return dealt.discard;
           });
         });
         return curDeck;
       });
+
       pushLog(`💣 Bomb triggered (${reason}). Board wiped + redealt.`);
     }, 1800);
   }
 
   function onDraw() {
-    if (bombOverlay || isSpinning) return;
+    if (boardLocked) return;
     if (!canDraw) return;
 
-    // 🔊 PLAY DEAL SOUND
     playDealSound();
-
     setDrawsUsed((x) => x + 1);
 
-    // Use current deck/discard snapshots via functional updates
     setDeck((curDeck) => {
       setDiscard((curDiscard) => {
         const t = takeTop(curDeck, curDiscard);
@@ -495,7 +506,6 @@ export default function SlotsSolitaire() {
           return curDiscard;
         }
 
-        // apply updated deck/discard
         setDeck(t.deck);
         setDiscard(t.discard);
 
@@ -513,7 +523,7 @@ export default function SlotsSolitaire() {
   }
 
   function onDiscardDrawn() {
-    if (bombOverlay || isSpinning) return;
+    if (boardLocked) return;
     if (!drawn) return;
     setDiscard((dc) => [...dc, drawn]);
     pushLog(`Discarded ${LABEL[drawn.sym]}.`);
@@ -522,14 +532,14 @@ export default function SlotsSolitaire() {
   }
 
   function onTapCell(idx: number) {
-    if (bombOverlay || isSpinning) return;
+    if (boardLocked) return;
+
     if (drawn) {
       const placed = drawn;
       pushLog(`Replaced cell ${idx + 1} with ${LABEL[placed.sym]}.`);
       setDrawn(null);
       setSelected([]);
 
-      // Place the drawn card immediately (no spin on user placement)
       setGrid((g) => {
         const next = g.slice();
         const old = next[idx];
@@ -544,7 +554,6 @@ export default function SlotsSolitaire() {
     setSelected((sel) => {
       const exists = sel.includes(idx);
       if (exists) return sel.filter((x) => x !== idx);
-      // Allow selecting multiple winning lines (e.g., 5 cards for a cross, 6 for two lines).
       if (sel.length >= GRID_SIZE) return sel;
       return [...sel, idx];
     });
@@ -555,20 +564,26 @@ export default function SlotsSolitaire() {
   }
 
   function onScoreSelected() {
-    if (drawn || bombOverlay) return;
+    if (drawn || boardLocked) return;
     if (winningLines.length === 0) return;
 
-    // 🔊 PLAY COIN DROP
     playCoinDrop();
 
-    // Score all winning lines contained in the selection.
-    // Note: overlapping lines are allowed; shared cards only get discarded/replaced once.
     const points = winningLines.reduce((sum, w) => sum + w.points, 0);
     const slots = Array.from(new Set(winningLines.flatMap((w) => w.line))).sort((a, b) => a - b);
     const cardsToDiscard = slots.map((i) => grid[i]).filter(Boolean) as Card[];
 
     setScore((s) => s + points);
-    setDiscard((dc) => [...dc, ...cardsToDiscard]);
+    setSelected([]);
+
+    const discardPool = [...discardRef.current, ...cardsToDiscard];
+    const dealt = dealN(slots.length, deckRef.current, discardPool);
+    const refill = dealt.cards.slice(0, slots.length);
+
+    deckRef.current = dealt.deck;
+    discardRef.current = dealt.discard;
+    setDeck(dealt.deck);
+    setDiscard(dealt.discard);
 
     setGrid((g) => {
       const next = g.slice();
@@ -576,41 +591,26 @@ export default function SlotsSolitaire() {
       return next;
     });
 
-    setDeck((curDeck) => {
-      setDiscard((curDiscard) => {
-        const ensured = ensureDeckAvailable(curDeck, curDiscard);
-        const dealt = dealN(slots.length, ensured.d, ensured.dc);
-
-        setDeck(dealt.deck);
-        setDiscard(dealt.discard);
-
-        // Spin only the changed cells, then commit the refill cards
-        const refill = dealt.cards.slice(0, slots.length);
-        spinCells(slots, () => {
-          setGrid((g) => {
-            const next = g.slice();
-            for (let k = 0; k < slots.length; k++) next[slots[k]] = refill[k] ?? null;
-            return next;
-          });
-          if (refill.some((c) => c?.sym === "bomb")) queueMicrotask(() => triggerBomb("bomb appeared on refill"));
-        });
-
-        return dealt.discard;
+    spinCells(slots, () => {
+      setGrid((g) => {
+        const next = g.slice();
+        for (let k = 0; k < slots.length; k++) {
+          next[slots[k]] = refill[k] ?? null;
+        }
+        return next;
       });
 
-      return curDeck;
+      if (refill.some((c) => c?.sym === "bomb")) {
+        queueMicrotask(() => triggerBomb("bomb appeared on refill"));
+      }
     });
 
     const label = winningLines.length === 1 ? winningLines[0].label : winningLines.map((w) => w.label).join(" + ");
     pushLog(`Scored ${label} for ${points}.`);
-    setSelected([]);
   }
 
-  const gameOver = drawsUsed >= DRAWS_MAX && drawn === null && possibleWins.length === 0;
+  const gameOver = drawsUsed >= DRAWS_MAX && drawn === null && !boardLocked && possibleWins.length === 0;
   const averageScore = stats.plays > 0 ? Math.round(stats.totalScore / stats.plays) : 0;
-
-
-
 
   useEffect(() => {
     if (!gameOver || gameRecorded) return;
@@ -626,19 +626,16 @@ export default function SlotsSolitaire() {
     setGameRecorded(true);
 
     if ((stats.plays + 1) % 15 === 0) {
-        setTimeout(() => {
-            window.location.assign("https://www.amazon.com/dp/B0GDP6YTM9");
-        }, 3000);
+      window.setTimeout(() => {
+        window.location.assign("https://www.amazon.com/dp/B0GDP6YTM9");
+      }, 3000);
     }
-
   }, [gameOver, gameRecorded, score, stats]);
 
+  const displayedAverageScore =
+    gameOver && gameRecorded && stats.plays > 0 ? Math.round(stats.totalScore / stats.plays) : averageScore;
 
-
-
-
-
-  // ---------- Styles (no Tailwind required) ----------
+  // ---------- Styles ----------
   const styles = {
     page: {
       minHeight: "100vh",
@@ -663,7 +660,6 @@ export default function SlotsSolitaire() {
     } as React.CSSProperties,
     row: { display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 } as React.CSSProperties,
     h1: { fontSize: 22, margin: 0, letterSpacing: 0.2 } as React.CSSProperties,
-    sub: { margin: "4px 0 0", fontSize: 13, color: "#a8a8b3" } as React.CSSProperties,
     btn: {
       background: "#24242a",
       border: "1px solid #2f2f36",
@@ -685,14 +681,14 @@ export default function SlotsSolitaire() {
       flex: 1,
     } as React.CSSProperties,
     btnDisabled: { opacity: 0.45, cursor: "not-allowed" } as React.CSSProperties,
-      stats: {
-          display: "grid",
-          alignItems: "start", // ← THIS is the key (stops stretching)
-          gridTemplateColumns: "repeat(3, 1fr)",
-          gap: 8,
-          marginTop: 10,
-          marginBottom: 10,
-      } as React.CSSProperties,
+    stats: {
+      display: "grid",
+      alignItems: "start",
+      gridTemplateColumns: "repeat(3, 1fr)",
+      gap: 8,
+      marginTop: 10,
+      marginBottom: 10,
+    } as React.CSSProperties,
     stat: {
       background: "#141416",
       border: "1px solid #2a2a2e",
@@ -701,120 +697,136 @@ export default function SlotsSolitaire() {
     } as React.CSSProperties,
     statLabel: { fontSize: 11, color: "#a8a8b3" } as React.CSSProperties,
     statValue: { fontSize: 18, fontWeight: 800 } as React.CSSProperties,
-
-    boardHeader: { display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 10 } as React.CSSProperties,
-    boardNote: { fontSize: 12, color: "#a8a8b3" } as React.CSSProperties,
-
-      boardGrid: {
-          display: "grid",
-          gridTemplateColumns: "repeat(3, 1fr)",
-          gap: 8,
-          width: "100%",
-          margin: "10px 0 0",
-      },
-
-      boardGridWrap: {
-          position: "relative",
-          width: "100%",
-      },
-
-      bombOverlay: {
-          position: "absolute",
-          inset: 0,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 8,
-          pointerEvents: "none",
-      },
-
-      bombOverlayInner: {
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          width: "100%",
-          filter: "drop-shadow(0 10px 18px rgba(0,0,0,0.45))",
-      },
-
-      gameOverOverlay: {
-          position: "absolute",
-          inset: 0,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "rgba(0,0,0,0.78)",
-          textAlign: "center" as const,
-          padding: 18,
-          zIndex: 20,
-          borderRadius: 12,
-      },
-
-      gameOverOverlayInner: {
-          maxWidth: 560,
-          width: "100%",
-          background: "rgba(17,17,17,0.94)",
-          border: "1px solid rgba(255,255,255,0.10)",
-          borderRadius: 18,
-          padding: 22,
-          boxShadow: "0 14px 32px rgba(0,0,0,0.45)",
-      },
-
-      gameOverTitle: {
-          fontWeight: 1000,
-          fontSize: 24,
-          marginBottom: 10,
-      } as React.CSSProperties,
-      gameOverText: {
-          fontSize: 17,
-          lineHeight: 1.5,
-          color: "#f5f5f5",
-      } as React.CSSProperties,
-      gameOverStats: {
-          marginTop: 18,
-          marginBottom: 18,
-          fontSize: 17,
-          lineHeight: 1.8,
-      } as React.CSSProperties,
-      gameOverButtons: {
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 12,
-          marginTop: 8,
-      } as React.CSSProperties,
-      gameOverShareButton: {
-          background: "#36d399",
-          border: "1px solid #36d399",
-          color: "#ffffff",
-          padding: "12px 16px",
-          borderRadius: 14,
-          fontWeight: 900,
-          fontSize: 18,
-          cursor: "pointer",
-          width: "100%",
-          maxWidth: 320,
-      },
-      gameOverOrderButton: {
-          background: "#36d399",
-          border: "1px solid #36d399",
-          color: "#ffffff",
-          padding: "12px 16px",
-          borderRadius: 14,
-          fontWeight: 900,
-          fontSize: 18,
-          cursor: "pointer",
-          width: "100%",
-          maxWidth: 320,
-      },
-      bombOverlayText: {
-          fontSize: 34,
-          fontWeight: 1000,
-          letterSpacing: 2,
-          textTransform: "uppercase" as const,
-          textShadow: "0 10px 22px rgba(0,0,0,0.55)",
-      },
-
+    boardGrid: {
+      display: "grid",
+      gridTemplateColumns: "repeat(3, 1fr)",
+      gap: 8,
+      width: "100%",
+      margin: "10px 0 0",
+    } as React.CSSProperties,
+    boardGridWrap: {
+      position: "relative",
+      width: "100%",
+    } as React.CSSProperties,
+    bombOverlay: {
+      position: "absolute",
+      inset: 0,
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+      gap: 8,
+      pointerEvents: "none",
+      zIndex: 15,
+    } as React.CSSProperties,
+    bombOverlayInner: {
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      width: "100%",
+      filter: "drop-shadow(0 10px 18px rgba(0,0,0,0.45))",
+    } as React.CSSProperties,
+    splashOverlay: {
+      position: "fixed",
+      inset: 0,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      background: "rgba(0,0,0,0.92)",
+      zIndex: 100,
+      padding: 20,
+    } as React.CSSProperties,
+    splashImage: {
+      maxWidth: "min(92vw, 520px)",
+      maxHeight: "88vh",
+      width: "100%",
+      height: "auto",
+      objectFit: "contain",
+      borderRadius: 18,
+      boxShadow: "0 16px 42px rgba(0,0,0,0.45)",
+    } as React.CSSProperties,
+    helpScreen: {
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      gap: 16,
+      background: "#141416",
+      border: "1px solid #2a2a2e",
+      borderRadius: 18,
+      padding: 16,
+      boxShadow: "0 8px 20px rgba(0,0,0,0.25)",
+    } as React.CSSProperties,
+    helpCloseBtn: {
+      alignSelf: "center",
+    } as React.CSSProperties,
+    gameOverOverlay: {
+      position: "absolute",
+      inset: 0,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      background: "rgba(0,0,0,0.78)",
+      textAlign: "center" as const,
+      padding: 18,
+      zIndex: 20,
+      borderRadius: 12,
+    } as React.CSSProperties,
+    gameOverOverlayInner: {
+      maxWidth: 560,
+      width: "100%",
+      background: "rgba(17,17,17,0.94)",
+      border: "1px solid rgba(255,255,255,0.10)",
+      borderRadius: 18,
+      padding: 22,
+      boxShadow: "0 14px 32px rgba(0,0,0,0.45)",
+    } as React.CSSProperties,
+    gameOverTitle: {
+      fontWeight: 1000,
+      fontSize: 24,
+      marginBottom: 10,
+    } as React.CSSProperties,
+    gameOverText: {
+      fontSize: 17,
+      lineHeight: 1.5,
+      color: "#f5f5f5",
+    } as React.CSSProperties,
+    gameOverStats: {
+      marginTop: 18,
+      marginBottom: 18,
+      fontSize: 17,
+      lineHeight: 1.8,
+    } as React.CSSProperties,
+    gameOverButtons: {
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      gap: 12,
+      marginTop: 8,
+    } as React.CSSProperties,
+    gameOverShareButton: {
+      background: "#36d399",
+      border: "1px solid #36d399",
+      color: "#ffffff",
+      padding: "12px 16px",
+      borderRadius: 14,
+      fontWeight: 900,
+      fontSize: 18,
+      cursor: "pointer",
+      width: "100%",
+      maxWidth: 320,
+    } as React.CSSProperties,
+    gameOverOrderButton: {
+      background: "#36d399",
+      border: "1px solid #36d399",
+      color: "#ffffff",
+      padding: "12px 16px",
+      borderRadius: 14,
+      fontWeight: 900,
+      fontSize: 18,
+      cursor: "pointer",
+      width: "100%",
+      maxWidth: 320,
+    } as React.CSSProperties,
     cell: {
       position: "relative",
       width: "100%",
@@ -835,19 +847,7 @@ export default function SlotsSolitaire() {
       justifyContent: "center",
       padding: "10%",
     } as React.CSSProperties,
-
     controlsRow: { display: "flex", gap: 8, marginTop: 10 } as React.CSSProperties,
-
-    toast: {
-      background: "#101012",
-      border: "1px solid #2a2a2e",
-      borderRadius: 16,
-      padding: 12,
-    } as React.CSSProperties,
-
-    info: { marginTop: 10, fontSize: 14, color: "#d8d8de" } as React.CSSProperties,
-    faint: { color: "#a8a8b3" } as React.CSSProperties,
-
     drawnPanel: {
       display: "flex",
       alignItems: "center",
@@ -869,23 +869,24 @@ export default function SlotsSolitaire() {
       alignItems: "center",
       justifyContent: "center",
     } as React.CSSProperties,
-    drawnTitle: { fontWeight: 900, marginBottom: 2 } as React.CSSProperties,
-    drawnHint: { fontSize: 12, color: "#a8a8b3", lineHeight: 1.35, minHeight: 34 } as React.CSSProperties,
   };
 
   return (
     <div style={styles.page}>
+      {showSplash ? (
+        <div style={styles.splashOverlay} aria-label="Splash screen">
+          <img src={SPLASH_SRC} alt="SLOTS Solitaire" style={styles.splashImage} />
+        </div>
+      ) : null}
+
       <div style={styles.container}>
         <header style={{ ...styles.row, marginBottom: 10 }}>
           <div>
             <h1 style={styles.h1}>SLOTS Solitaire v2</h1>
-          {/*  <p style={styles.sub}>Mobile-first • Single player • Manual scoring</p>*/}
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-            {/*<button style={styles.btn} onClick={forceGameOver}>*/}
-            {/*  Test Game Over*/}
-            {/*</button>*/}
-            <button style={styles.btn} onClick={resetGame}>
+            {/* <button style={styles.btn} onClick={forceGameOver}>Test Game Over</button> */}
+            <button style={styles.btn} onClick={resetGame} disabled={showSplash}>
               New Game
             </button>
           </div>
@@ -893,217 +894,194 @@ export default function SlotsSolitaire() {
 
         {showHelp ? (
           <div style={styles.helpScreen}>
-                      <img
-                          src={HELP_IMAGE_SRC}
-                          style={{
-                              maxWidth: "100%",
-                              maxHeight: "180vh",
-                              width: "auto",
-                              height: "auto",
-                              objectFit: "contain"
-                          }}
-                      />
-                      <button style={styles.helpCloseBtn}
-                          onClick={() => setShowHelp(false)}
-                          style={{
-                              ...styles.btnPrimary,
-                              fontSize: 20,
-                              flex: "0 0 auto",   // stop flex stretching
-                              padding: "6px 10px",
-                              height: 40,         // control height directly
-                              width: 120         // control height directly
-                          }}
+            <img
+              src={HELP_IMAGE_SRC}
+              alt="Help"
+              style={{
+                maxWidth: "100%",
+                maxHeight: "180vh",
+                width: "auto",
+                height: "auto",
+                objectFit: "contain",
+              }}
+            />
+            <button
+              style={{
+                ...styles.btnPrimary,
+                ...styles.helpCloseBtn,
+                fontSize: 20,
+                flex: "0 0 auto",
+                padding: "6px 10px",
+                height: 40,
+                width: 120,
+              }}
+              onClick={() => setShowHelp(false)}
             >
               Close
             </button>
           </div>
         ) : (
           <>
-        <div style={styles.stats}>
-            <Stat label="Score" value={score.toString()} />
-            <Stat label="Draws" value={`${drawsUsed}/${DRAWS_MAX}`}
-            />
-            <button
+            <div style={styles.stats}>
+              <Stat label="Score" value={score.toString()} />
+              <Stat label="Draws" value={`${drawsUsed}/${DRAWS_MAX}`} />
+              <button
                 onClick={() => setShowHelp(true)}
+                disabled={showSplash}
                 style={{
-                    ...styles.btnPrimary,
-                    fontSize: 20,
-                    flex: "0 0 auto",   // stop flex stretching
-                    padding: "6px 10px",
-                    height: 60,         // control height directly
-                    width: 120         // control height directly
+                  ...styles.btnPrimary,
+                  fontSize: 20,
+                  flex: "0 0 auto",
+                  padding: "6px 10px",
+                  height: 60,
+                  width: 120,
+                  ...(showSplash ? styles.btnDisabled : {}),
                 }}
-            >
+              >
                 HELP
-            </button>
-        {/*  <Stat label="Remaining Cards In Deck" value={`${deck.length}`} />*/}
-        </div>
+              </button>
+            </div>
 
-        <div style={styles.card}>
-          {/*<div style={styles.boardHeader}>*/}
-          {/*  <div style={{ fontSize: 14, fontWeight: 900 }}>Board</div>*/}
-          {/*  <div style={styles.boardNote}>Tap cards to select a line • Tap again to unselect</div>*/}
-          {/*</div>*/}
+            <div style={styles.card}>
+              <div style={styles.boardGridWrap}>
+                <div style={styles.boardGrid}>
+                  {grid.map((card, idx) => {
+                    const isSel = selected.includes(idx);
+                    const showSym = spinSyms[idx] ?? card?.sym ?? null;
+                    const isEmpty = showSym === null;
+                    const disabled = isEmpty || boardLocked;
 
-          <div style={styles.boardGridWrap}>
-          <div style={styles.boardGrid}>
-            {grid.map((card, idx) => {
-              const isSel = selected.includes(idx);
-              const showSym = spinSyms[idx] ?? card?.sym ?? null;
-              const isEmpty = showSym === null;
-              const disabled = isEmpty || bombOverlay || isSpinning;
+                    const cellStyle: React.CSSProperties = {
+                      ...styles.cell,
+                      ...(isEmpty ? styles.cellDisabled : {}),
+                      ...(isSel ? styles.cellSelected : {}),
+                      aspectRatio: "1 / 1",
+                      cursor: disabled ? "not-allowed" : "pointer",
+                    };
 
-              const cellStyle: React.CSSProperties = {
-                ...styles.cell,
-                ...(isEmpty ? styles.cellDisabled : {}),
-                ...(isSel ? styles.cellSelected : {}),
-                aspectRatio: "1 / 1",
-                cursor: disabled ? "not-allowed" : "pointer",
-              };
+                    return (
+                      <button
+                        key={idx}
+                        style={cellStyle}
+                        onClick={() => onTapCell(idx)}
+                        disabled={disabled}
+                        aria-label={showSym ? LABEL[showSym] : "Empty"}
+                      >
+                        {showSym ? (
+                          <div style={styles.imgWrap}>
+                            <img
+                              src={ASSET_MAP[showSym]}
+                              alt={LABEL[showSym]}
+                              style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                            />
+                          </div>
+                        ) : null}
+                        <div style={styles.cellIndex}>{idx + 1}</div>
+                      </button>
+                    );
+                  })}
+                </div>
 
-              return (
-                <button
-                  key={idx}
-                  style={cellStyle}
-                  onClick={() => onTapCell(idx)}
-                  disabled={disabled}
-                  aria-label={showSym ? LABEL[showSym] : "Empty"}
-                >
-                  {showSym ? (
-                    <div style={styles.imgWrap}>
+                {bombOverlay ? (
+                  <div style={styles.bombOverlay} aria-label="Bomb overlay">
+                    <div style={styles.bombOverlayInner}>
                       <img
-                        src={ASSET_MAP[showSym]}
-                        alt={LABEL[showSym]}
-                        style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                        src={ASSET_MAP.bomb}
+                        alt="Bomb"
+                        style={{ width: "clamp(220px, 60vw, 420px)", height: "auto", objectFit: "contain" }}
                       />
                     </div>
-                  ) : null}
-                  <div style={styles.cellIndex}>{idx + 1}</div>
+                  </div>
+                ) : null}
+
+                {gameOver ? (
+                  <div style={styles.gameOverOverlay} aria-label="Game over message">
+                    <div style={styles.gameOverOverlayInner}>
+                      <div style={styles.gameOverTitle}>Great Game!</div>
+
+                      <div style={styles.gameOverStats}>
+                        <div>Number of Plays: {stats.plays}</div>
+                        <div>High Score: {stats.highScore}</div>
+                        <div>Average Score: {displayedAverageScore}</div>
+                      </div>
+
+                      <div style={styles.gameOverText}>
+                        Share the free SLOTS Solitaire version with a friend. Buy the multi-player card game version to play with
+                        friends at home.
+                      </div>
+
+                      <div style={styles.gameOverButtons}>
+                        <button onClick={handleShareGame} style={styles.gameOverShareButton}>
+                          Share With a Friend
+                        </button>
+
+                        <button
+                          onClick={() => window.open("https://www.amazon.com/dp/B0GDP6YTM9", "_blank")}
+                          style={styles.gameOverOrderButton}
+                        >
+                          Buy the Card Game
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+
+              <div style={styles.controlsRow}>
+                <button
+                  onClick={onScoreSelected}
+                  disabled={!(selectionInfo.ok && !drawn && !boardLocked)}
+                  style={{
+                    ...styles.btnPrimary,
+                    ...(selectionInfo.ok && !drawn && !boardLocked ? {} : styles.btnDisabled),
+                  }}
+                >
+                  {selectionInfo.ok ? "Cash In" : "Select a Win"}
                 </button>
-              );
-            })}
-          </div>
-          {bombOverlay ? (
-            <div style={styles.bombOverlay} aria-label="Bomb overlay">
-              <div style={styles.bombOverlayInner}>
-                <img src={ASSET_MAP.bomb} alt="Bomb" style={{ width: "clamp(220px, 60vw, 420px)", height: "auto", objectFit: "contain" }} />
+                <button
+                  onClick={onClearSelection}
+                  disabled={selected.length === 0 || boardLocked}
+                  style={{
+                    ...styles.btn,
+                    ...(selected.length === 0 || boardLocked ? styles.btnDisabled : {}),
+                  }}
+                >
+                  Clear
+                </button>
               </div>
-              {/*<div style={styles.bombOverlayText}>BOMB!</div>*/}
-            </div>
-          ) : null}
 
-          {gameOver ? (
-            <div style={styles.gameOverOverlay} aria-label="Game over message">
-              <div style={styles.gameOverOverlayInner}>
-                <div style={styles.gameOverTitle}>Great Game!</div>
-
-                <div style={styles.gameOverStats}>
-                  <div>Number of Plays: {stats.plays}</div>
-                  <div>High Score: {stats.highScore}</div>
-                  <div>v2.003</div>
+              <div style={styles.drawnPanel}>
+                <div style={styles.drawnBox}>
+                  <img
+                    src={drawn ? ASSET_MAP[drawn.sym] : CARD_BACK_SRC}
+                    alt={drawn ? LABEL[drawn.sym] : "Deck"}
+                    style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                  />
                 </div>
 
-                <div style={styles.gameOverText}>
-                    Share the free SLOTS Solitaire version with a friend.   Buy the multi-player card game version to play with friends at home.
-                </div>
-
-                <div style={styles.gameOverButtons}>
-
-                  <button
-                    onClick={handleShareGame}
-                    style={styles.gameOverShareButton}
-                  >
-                    Share With a Friend
-                  </button>
-
-                  <button
-                    onClick={() => window.open("https://www.paypal.com/ncp/payment/MFFFMRR4JAQBL", "_blank")}
-                    style={styles.gameOverOrderButton}
-                  >
-                    Buy the Card Game
-                  </button>
-
-
-
-                </div>
+                <button
+                  onClick={drawn ? onDiscardDrawn : onDraw}
+                  disabled={boardLocked || (!drawn && !canDrawNow)}
+                  style={{
+                    ...styles.btnPrimary,
+                    height: 86,
+                    fontSize: 22,
+                    ...(drawn
+                      ? { background: "#24242a", borderColor: "#2f2f36", color: "#f5f5f5" }
+                      : {
+                          background: canDrawNow ? "#36d399" : "#24242a",
+                          borderColor: canDrawNow ? "#36d399" : "#2f2f36",
+                          color: canDrawNow ? "#ffffff" : "#a8a8b3",
+                        }),
+                    ...((drawn || canDrawNow) && !boardLocked ? {} : styles.btnDisabled),
+                  }}
+                >
+                  {drawn ? "Discard Draw" : "Draw"}
+                </button>
               </div>
             </div>
-          ) : null}
-        </div>
-
-          {/* Controls */}
-          <div style={styles.controlsRow}>
-            <button
-              onClick={onScoreSelected}
-              disabled={!(selectionInfo.ok && !drawn && !bombOverlay)}
-              style={{
-                ...styles.btnPrimary,
-                ...(selectionInfo.ok && !drawn && !bombOverlay ? {} : styles.btnDisabled),
-              }}
-            >
-            {selectionInfo.ok ? "Cash In" : "Select a Win"}
-            </button>
-            <button
-              onClick={onClearSelection}
-              disabled={selected.length === 0}
-              style={{
-                ...styles.btn,
-                ...(selected.length === 0 ? styles.btnDisabled : {}),
-              }}
-            >
-              Clear
-            </button>
-</div>
-
-
-          {/* Draw / Discard controls */}
-          
-{/*
-  Draw / Discard control (single button to prevent layout “jump”)
-*/}
-
-    {/* Deck + Draw/Discard button (horizontal to save vertical space) */}
-    <div style={styles.drawnPanel}>
-        <div style={styles.drawnBox}>
-            <img
-                src={drawn ? ASSET_MAP[drawn.sym] : CARD_BACK_SRC}
-                alt={drawn ? LABEL[drawn.sym] : "Deck"}
-                style={{ width: "100%", height: "100%", objectFit: "contain" }}
-            />
-        </div>
-
-        <button
-            onClick={drawn ? onDiscardDrawn : onDraw}
-            disabled={bombOverlay || isSpinning || (!drawn && !canDrawNow)}
-            style={{
-                ...styles.btnPrimary,
-                height: 86,
-                fontSize: 22,
-                ...(drawn
-                    ? { background: "#24242a", borderColor: "#2f2f36", color: "#f5f5f5" }
-                    : {
-                        background: canDrawNow ? "#36d399" : "#24242a",
-                        borderColor: canDrawNow ? "#36d399" : "#2f2f36",
-                        color: canDrawNow ? "#ffffff" : "#a8a8b3",
-                    }),
-                ...((drawn || canDrawNow) ? {} : styles.btnDisabled),
-            }}
-        >
-            {drawn ? "Discard Draw" : "Draw"}
-        </button>
-    </div>
-        {/*  <div style={{ marginTop: 12, fontSize: 12, color: "#a8a8b3", lineHeight: 1.5 }}>*/}
-        {/*    <div style={{ fontWeight: 900, color: "#d8d8de", marginBottom: 6 }}>Rules</div>*/}
-        {/*    <div>• Select exactly 3 cards in a straight line, then press <strong>Cash In</strong>.</div>*/}
-        {/*    <div>• Crown is wild. 3 Crowns = 1000.</div>*/}
-        {/*    <div>• 3 Diamonds=500 • 3 Presents=400 • 3 7s=300 • 3 BARs=200 • 3 Cherries=100 • 3 Jewels=0.</div>*/}
-        {/*    <div>• Bomb wipes the whole board and redeals 9.</div>*/}
-        {/*    <div>• You can score multiple times between draws (“let it ride”).</div>*/}
-        {/*  </div>*/}
-        </div>
           </>
         )}
-
       </div>
     </div>
   );
