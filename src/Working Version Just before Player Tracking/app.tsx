@@ -33,53 +33,6 @@ const STATS_KEY = "slots_solitaire_stats";
 const SPLASH_SRC = "/assets/splash.png";
 const SPLASH_MS = 2500;
 
-const STATS_UPLOAD_URL = "https://d2xdybbmnhyevxwjhhb2qkftky0quyjy.lambda-url.us-east-1.on.aws/";
-const SESSION_ID_KEY = "slots_session_id";
-
-function getSessionId(): string {
-  try {
-    let id = localStorage.getItem(SESSION_ID_KEY);
-    if (!id) {
-      id =
-        typeof crypto !== "undefined" && "randomUUID" in crypto
-          ? crypto.randomUUID()
-          : "fallback_" + Date.now() + "_" + Math.random().toString(16).slice(2);
-      localStorage.setItem(SESSION_ID_KEY, id);
-    }
-    return id;
-  } catch {
-    return "fallback_" + Date.now();
-  }
-}
-
-async function uploadGameStats(plays: number, highScore: number, averageScore: number) {
-    try {
-        const response = await fetch(
-            "https://d2xdybbmnhyevxwjhhb2qkftky0quyjy.lambda-url.us-east-1.on.aws/",
-            {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    plays: plays,
-                    highScore: highScore,
-                    averageScore: averageScore,
-                    sessionId: localStorage.getItem("slots_session_id") || "unknown",
-                }),
-            }
-        );
-
-        const text = await response.text();
-
-        console.log("🔥 Lambda response:", response.status, text);
-
-    } catch (err) {
-        console.error("❌ Upload failed:", err);
-    }
-}
-
-
 type GameStats = {
   plays: number;
   highScore: number;
@@ -390,25 +343,6 @@ export default function SlotsSolitaire() {
     return { d: reshuffled, dc: [] as Card[] };
   }
 
-async function uploadGameStats(plays: number, highScore: number, averageScore: number) {
-    try {
-        await fetch("https://d2xdybbmnhyevxwjhhb2qkftky0quyjy.lambda-url.us-east-1.on.aws/", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                plays: plays,
-                highScore: highScore,
-                averageScore: averageScore,
-                sessionId: localStorage.getItem("slots_session_id") || "unknown"
-            })
-        });
-    } catch (err) {
-        console.error("Upload failed:", err);
-    }
-}
-
   function takeTop(curDeck: Card[], curDiscard: Card[]) {
     const ensured = ensureDeckAvailable(curDeck, curDiscard);
     const d = ensured.d.slice();
@@ -687,15 +621,11 @@ async function uploadGameStats(plays: number, highScore: number, averageScore: n
       totalScore: stats.totalScore + score,
     };
 
-    const avg = updated.plays > 0 ? Math.round(updated.totalScore / updated.plays) : 0;
-
     setStats(updated);
     saveStats(updated);
     setGameRecorded(true);
 
-    uploadGameStats(updated.plays, updated.highScore, avg);
-
-    if (updated.plays % 15 === 0) {
+    if ((stats.plays + 1) % 15 === 0) {
       window.setTimeout(() => {
         window.location.assign("https://www.amazon.com/dp/B0GDP6YTM9");
       }, 3000);
@@ -955,7 +885,7 @@ async function uploadGameStats(plays: number, highScore: number, averageScore: n
             <h1 style={styles.h1}>SLOTS Solitaire v2.3</h1>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-{/*             <button style={styles.btn} onClick={forceGameOver}>Test Game Over</button> */}
+            {/* <button style={styles.btn} onClick={forceGameOver}>Test Game Over</button> */}
             <button style={styles.btn} onClick={resetGame} disabled={showSplash}>
               New Game
             </button>
