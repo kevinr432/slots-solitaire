@@ -54,21 +54,18 @@ function getSessionId(): string {
 
 async function uploadGameStats(plays: number, highScore: number, averageScore: number) {
     try {
-        const response = await fetch(
-            "https://d2xdybbmnhyevxwjhhb2qkftky0quyjy.lambda-url.us-east-1.on.aws/",
-            {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    plays: plays,
-                    highScore: highScore,
-                    averageScore: averageScore,
-                    sessionId: localStorage.getItem("slots_session_id") || "unknown",
-                }),
-            }
-        );
+        const response = await fetch("https://d2xdybbmnhyevxwjhhb2qkftky0quyjy.lambda-url.us-east-1.on.aws/", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                plays: plays,
+                highScore: highScore,
+                averageScore: averageScore,
+                sessionId: getSessionId()
+            })
+        });
 
         const text = await response.text();
 
@@ -78,7 +75,6 @@ async function uploadGameStats(plays: number, highScore: number, averageScore: n
         console.error("❌ Upload failed:", err);
     }
 }
-
 
 type GameStats = {
   plays: number;
