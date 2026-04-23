@@ -66,7 +66,29 @@ async function uploadGameStats(plays: number, highScore: number, averageScore: n
                 sessionId: getSessionId()
             })
         });
+        async function uploadGameStats(plays: number, highScore: number, averageScore: number) {
+            try {
+                const response = await fetch("https://d2xdybbmnhyevxwjhhb2qkftky0quyjy.lambda-url.us-east-1.on.aws/", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        plays: plays,
+                        highScore: highScore,
+                        averageScore: averageScore,
+                        sessionId: getSessionId()
+                    })
+                });
 
+                const text = await response.text();
+
+                console.log("🔥 Lambda response:", response.status, text);
+
+            } catch (err) {
+                console.error("❌ Upload failed:", err);
+            }
+        }
         const text = await response.text();
 
         console.log("🔥 Lambda response:", response.status, text);
@@ -948,7 +970,7 @@ async function uploadGameStats(plays: number, highScore: number, averageScore: n
       <div style={styles.container}>
         <header style={{ ...styles.row, marginBottom: 10 }}>
           <div>
-            <h1 style={styles.h1}>SLOTS Solitaire v2.4</h1>
+            <h1 style={styles.h1}>SLOTS Solitaire v2.5</h1>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
 {/*             <button style={styles.btn} onClick={forceGameOver}>Test Game Over</button> */}
