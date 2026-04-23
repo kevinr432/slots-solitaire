@@ -385,25 +385,6 @@ export default function SlotsSolitaire() {
     return { d: reshuffled, dc: [] as Card[] };
   }
 
-async function uploadGameStats(plays: number, highScore: number, averageScore: number) {
-    try {
-        await fetch("https://d2xdybbmnhyevxwjhhb2qkftky0quyjy.lambda-url.us-east-1.on.aws/", {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                plays: plays,
-                highScore: highScore,
-                averageScore: averageScore,
-                sessionId: localStorage.getItem("slots_session_id") || "unknown"
-            })
-        });
-    } catch (err) {
-        console.error("Upload failed:", err);
-    }
-}
-
   function takeTop(curDeck: Card[], curDiscard: Card[]) {
     const ensured = ensureDeckAvailable(curDeck, curDiscard);
     const d = ensured.d.slice();
@@ -947,7 +928,7 @@ async function uploadGameStats(plays: number, highScore: number, averageScore: n
       <div style={styles.container}>
         <header style={{ ...styles.row, marginBottom: 10 }}>
           <div>
-            <h1 style={styles.h1}>SLOTS Solitaire v2.6</h1>
+            <h1 style={styles.h1}>SLOTS Solitaire v2.7</h1>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
 {/*             <button style={styles.btn} onClick={forceGameOver}>Test Game Over</button> */}
