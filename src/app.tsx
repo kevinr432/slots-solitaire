@@ -952,7 +952,7 @@ async function uploadGameStats(plays: number, highScore: number, averageScore: n
       <div style={styles.container}>
         <header style={{ ...styles.row, marginBottom: 10 }}>
           <div>
-            <h1 style={styles.h1}>SLOTS Solitaire v2.3</h1>
+            <h1 style={styles.h1}>SLOTS Solitaire v2.4</h1>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
 {/*             <button style={styles.btn} onClick={forceGameOver}>Test Game Over</button> */}
