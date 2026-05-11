@@ -311,10 +311,13 @@ export default function SlotsSolitaire() {
   const [showPlayerPrompt, setShowPlayerPrompt] = useState(false);
   const [playerForm, setPlayerForm] = useState<PlayerInfo>({ firstName: "", lastName: "", phone: "" });
   const [playerFormError, setPlayerFormError] = useState("");
+  const [scoreBam, setScoreBam] = useState<number | null>(null);
+  const [showGameOverStatsTitle, setShowGameOverStatsTitle] = useState(false);
 
   const splashTimer = useRef<number | null>(null);
   const bombTimer = useRef<number | null>(null);
-  const gameOverTabTimer = useRef<number | null>(null);
+  const scoreBamTimer = useRef<number | null>(null);
+  const greatGameTimer = useRef<number | null>(null);
   const deckRef = useRef<Card[]>([]);
   const discardRef = useRef<Card[]>([]);
 
@@ -335,6 +338,8 @@ export default function SlotsSolitaire() {
     if (bombOverlay || isSpinning || showSplash) return;
     setDrawn(null);
     setSelected([]);
+    setGrid(Array(GRID_SIZE).fill(null));
+    setSpinSyms(Array(GRID_SIZE).fill(null));
     setDrawsUsed(DRAWS_MAX);
     pushLog("Forced Game Over for testing.");
   }
@@ -379,6 +384,21 @@ export default function SlotsSolitaire() {
       window.clearTimeout(spinTimeout.current);
       spinTimeout.current = null;
     }
+  }
+
+  function showScoreBam(points: number) {
+    if (points <= 0) return;
+
+    if (scoreBamTimer.current !== null) {
+      window.clearTimeout(scoreBamTimer.current);
+      scoreBamTimer.current = null;
+    }
+
+    setScoreBam(points);
+    scoreBamTimer.current = window.setTimeout(() => {
+      setScoreBam(null);
+      scoreBamTimer.current = null;
+    }, 900);
   }
 
   function randomSym() {
@@ -523,9 +543,13 @@ export default function SlotsSolitaire() {
       window.clearTimeout(splashTimer.current);
       splashTimer.current = null;
     }
-    if (gameOverTabTimer.current) {
-      window.clearTimeout(gameOverTabTimer.current);
-      gameOverTabTimer.current = null;
+    if (scoreBamTimer.current) {
+      window.clearTimeout(scoreBamTimer.current);
+      scoreBamTimer.current = null;
+    }
+    if (greatGameTimer.current) {
+      window.clearTimeout(greatGameTimer.current);
+      greatGameTimer.current = null;
     }
 
     stopSpinTimers();
@@ -535,6 +559,8 @@ export default function SlotsSolitaire() {
     setSelected([]);
     setGrid(Array(GRID_SIZE).fill(null));
     setSpinSyms(Array(GRID_SIZE).fill(null));
+    setScoreBam(null);
+    setShowGameOverStatsTitle(false);
     setActiveTab("game");
     setShowSplash(true);
     if (shouldPromptForPlayerInfo()) {
@@ -560,9 +586,13 @@ export default function SlotsSolitaire() {
         window.clearTimeout(splashTimer.current);
         splashTimer.current = null;
       }
-      if (gameOverTabTimer.current) {
-        window.clearTimeout(gameOverTabTimer.current);
-        gameOverTabTimer.current = null;
+      if (scoreBamTimer.current) {
+        window.clearTimeout(scoreBamTimer.current);
+        scoreBamTimer.current = null;
+      }
+      if (greatGameTimer.current) {
+        window.clearTimeout(greatGameTimer.current);
+        greatGameTimer.current = null;
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -720,6 +750,7 @@ export default function SlotsSolitaire() {
     const cardsToDiscard = slots.map((i) => grid[i]).filter(Boolean) as Card[];
 
     setScore((s) => s + points);
+    showScoreBam(points);
     setSelected([]);
 
     const discardPool = [...discardRef.current, ...cardsToDiscard];
@@ -772,19 +803,20 @@ export default function SlotsSolitaire() {
     setStats(updated);
     saveStats(updated);
     setGameRecorded(true);
+    setShowGameOverStatsTitle(true);
+    setActiveTab("stats");
 
     uploadGameStats(updated.plays, updated.highScore, avg);
 
-    gameOverTabTimer.current = window.setTimeout(() => {
-      setActiveTab("amazon");
-      gameOverTabTimer.current = null;
-    }, 5000);
-
-    if (updated.plays % 15 === 0) {
-      window.setTimeout(() => {
-        window.location.assign("https://www.amazon.com/dp/B0GDP6YTM9");
-      }, 3000);
+    if (greatGameTimer.current) {
+      window.clearTimeout(greatGameTimer.current);
     }
+
+    greatGameTimer.current = window.setTimeout(() => {
+      setShowGameOverStatsTitle(false);
+      setActiveTab("amazon");
+      greatGameTimer.current = null;
+    }, 3000);
   }, [gameOver, gameRecorded, score, stats]);
 
   const displayedAverageScore =
@@ -1062,49 +1094,39 @@ export default function SlotsSolitaire() {
       gap: 10,
       alignItems: "center",
     } as React.CSSProperties,
-    gameOverOverlay: {
+    scoreBam: {
       position: "absolute",
-      inset: 0,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      background: "rgba(0,0,0,0.78)",
-      textAlign: "center" as const,
-      padding: 18,
-      zIndex: 20,
-      borderRadius: 12,
-    } as React.CSSProperties,
-    gameOverOverlayInner: {
-      maxWidth: 560,
-      width: "100%",
-      background: "rgba(17,17,17,0.94)",
-      border: "1px solid rgba(255,255,255,0.10)",
-      borderRadius: 18,
-      padding: 22,
-      boxShadow: "0 14px 32px rgba(0,0,0,0.45)",
-    } as React.CSSProperties,
-    gameOverTitle: {
-      fontWeight: 1000,
-      fontSize: 24,
-      marginBottom: 10,
-    } as React.CSSProperties,
-    gameOverText: {
-      fontSize: 17,
-      lineHeight: 1.5,
-      color: "#f5f5f5",
-    } as React.CSSProperties,
-    gameOverStats: {
-      marginTop: 18,
-      marginBottom: 18,
-      fontSize: 17,
-      lineHeight: 1.8,
-    } as React.CSSProperties,
-    gameOverButtons: {
+      left: "50%",
+      top: "45%",
+      transform: "translate(-50%, -50%) rotate(-4deg)",
       display: "flex",
       flexDirection: "column",
       alignItems: "center",
-      gap: 12,
-      marginTop: 8,
+      justifyContent: "center",
+      minWidth: 190,
+      padding: "16px 24px",
+      background: "#ffcf33",
+      color: "#111111",
+      border: "4px solid #ffffff",
+      borderRadius: 18,
+      boxShadow: "0 16px 34px rgba(0,0,0,0.45)",
+      textAlign: "center" as const,
+      zIndex: 30,
+      pointerEvents: "none",
+    } as React.CSSProperties,
+    scoreBamPoints: {
+      fontSize: 30,
+      fontWeight: 1000,
+      lineHeight: 1.05,
+      textShadow: "1px 1px 0 #ffffff",
+    } as React.CSSProperties,
+    statsGameOverTitle: {
+      margin: "0 0 12px",
+      color: "#ffcf33",
+      fontSize: 28,
+      lineHeight: 1.1,
+      fontWeight: 1000,
+      textAlign: "center" as const,
     } as React.CSSProperties,
     gameOverShareButton: {
       background: "#36d399",
@@ -1185,10 +1207,9 @@ export default function SlotsSolitaire() {
       <div style={styles.container}>
         <header style={{ ...styles.row, marginBottom: 10 }}>
           <div>
-            <h1 style={styles.h1}>SLOTS Solitaire v2.8</h1>
+            <h1 style={styles.h1}>SLOTS Solitaire v2.9</h1>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
-{/*             <button style={styles.btn} onClick={forceGameOver}>Test Game Over</button> */}
             <button style={styles.btn} onClick={resetGame} disabled={showSplash}>
               New Game
             </button>
@@ -1200,7 +1221,10 @@ export default function SlotsSolitaire() {
             type="button"
             role="tab"
             aria-selected={activeTab === "game"}
-            onClick={() => setActiveTab("game")}
+            onClick={() => {
+              setShowGameOverStatsTitle(false);
+              setActiveTab("game");
+            }}
             style={{ ...styles.tab, ...(activeTab === "game" ? styles.tabActive : {}) }}
           >
             Game
@@ -1209,7 +1233,10 @@ export default function SlotsSolitaire() {
             type="button"
             role="tab"
             aria-selected={activeTab === "help"}
-            onClick={() => setActiveTab("help")}
+            onClick={() => {
+              setShowGameOverStatsTitle(false);
+              setActiveTab("help");
+            }}
             style={{ ...styles.tab, ...(activeTab === "help" ? styles.tabActive : {}) }}
           >
             Help
@@ -1218,7 +1245,10 @@ export default function SlotsSolitaire() {
             type="button"
             role="tab"
             aria-selected={activeTab === "stats"}
-            onClick={() => setActiveTab("stats")}
+            onClick={() => {
+              setShowGameOverStatsTitle(false);
+              setActiveTab("stats");
+            }}
             style={{ ...styles.tab, ...(activeTab === "stats" ? styles.tabActive : {}) }}
           >
             Stats
@@ -1227,7 +1257,10 @@ export default function SlotsSolitaire() {
             type="button"
             role="tab"
             aria-selected={activeTab === "amazon"}
-            onClick={() => setActiveTab("amazon")}
+            onClick={() => {
+              setShowGameOverStatsTitle(false);
+              setActiveTab("amazon");
+            }}
             style={{ ...styles.tab, ...(activeTab === "amazon" ? styles.tabActive : {}) }}
           >
             Amazon
@@ -1258,6 +1291,7 @@ export default function SlotsSolitaire() {
           </div>
         ) : activeTab === "stats" ? (
           <div style={styles.statsScreen}>
+            {showGameOverStatsTitle ? <h2 style={styles.statsGameOverTitle}>Game Over</h2> : null}
             <h2 style={styles.statsScreenTitle}>Stats</h2>
             <div style={styles.statsScreenGrid}>
               <Stat label="Current Score" value={score.toString()} />
@@ -1358,37 +1392,12 @@ export default function SlotsSolitaire() {
                   </div>
                 ) : null}
 
-                {gameOver ? (
-                  <div style={styles.gameOverOverlay} aria-label="Game over message">
-                    <div style={styles.gameOverOverlayInner}>
-                      <div style={styles.gameOverTitle}>Great Game!</div>
-
-                      <div style={styles.gameOverStats}>
-                        <div>Number of Plays: {stats.plays}</div>
-                        <div>High Score: {stats.highScore}</div>
-                        <div>Average Score: {displayedAverageScore}</div>
-                      </div>
-
-                      <div style={styles.gameOverText}>
-                        Share the free SLOTS Solitaire version with a friend. Buy the multi-player card game version to play with
-                        friends at home.
-                      </div>
-
-                      <div style={styles.gameOverButtons}>
-                        <button onClick={handleShareGame} style={styles.gameOverShareButton}>
-                          Share With a Friend
-                        </button>
-
-                        <button
-                          onClick={() => window.location.assign("https://www.amazon.com/dp/B0GDP6YTM9")}
-                          style={styles.gameOverOrderButton}
-                        >
-                          Buy the Card Game
-                        </button>
-                      </div>
-                    </div>
+                {scoreBam !== null ? (
+                  <div style={styles.scoreBam} aria-live="polite">
+                    <div style={styles.scoreBamPoints}>+{scoreBam} POINTS</div>
                   </div>
                 ) : null}
+
               </div>
 
               <div style={styles.controlsRow}>
@@ -1504,6 +1513,7 @@ export default function SlotsSolitaire() {
           </div>
         </div>
       ) : null}
+
     </div>
   );
 
