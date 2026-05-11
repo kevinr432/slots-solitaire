@@ -30,6 +30,7 @@ function playCoinDrop() {
 }
 
 const STATS_KEY = "slots_solitaire_stats";
+const PLAYER_INFO_KEY = "slots_solitaire_player_info";
 const SPLASH_SRC = "/assets/splash.png";
 const SPLASH_MS = 2500;
 
@@ -81,6 +82,14 @@ type GameStats = {
   totalScore: number;
 };
 
+type PlayerInfo = {
+  firstName: string;
+  lastName: string;
+  phone: string;
+};
+
+type ActiveTab = "game" | "help" | "stats";
+
 function loadStats(): GameStats {
   try {
     const raw = localStorage.getItem(STATS_KEY);
@@ -98,6 +107,45 @@ function loadStats(): GameStats {
 
 function saveStats(stats: GameStats) {
   localStorage.setItem(STATS_KEY, JSON.stringify(stats));
+}
+
+function loadPlayerInfo(): PlayerInfo | null {
+  try {
+    const raw = localStorage.getItem(PLAYER_INFO_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    const firstName = String(parsed.firstName || "").trim();
+    const lastName = String(parsed.lastName || "").trim();
+    const phone = String(parsed.phone || "").replace(/\D/g, "");
+    if (!firstName || !lastName || phone.length !== 10) return null;
+    return { firstName, lastName, phone };
+  } catch {
+    return null;
+  }
+}
+
+function savePlayerInfo(playerInfo: PlayerInfo) {
+  localStorage.setItem(PLAYER_INFO_KEY, JSON.stringify(playerInfo));
+}
+
+function copyTextFallback(text: string) {
+  const input = document.createElement("textarea");
+  input.value = text;
+  input.setAttribute("readonly", "true");
+  input.style.position = "fixed";
+  input.style.left = "-9999px";
+  input.style.top = "0";
+  document.body.appendChild(input);
+  input.focus();
+  input.select();
+
+  try {
+    return document.execCommand("copy");
+  } catch {
+    return false;
+  } finally {
+    document.body.removeChild(input);
+  }
 }
 
 const DRAWS_MAX = 25;
@@ -242,28 +290,26 @@ export default function SlotsSolitaire() {
 
   const [bombOverlay, setBombOverlay] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
-  const [showHelp, setShowHelp] = useState(false);
+  const [activeTab, setActiveTab] = useState<ActiveTab>("game");
   const [stats, setStats] = useState<GameStats>({ plays: 0, highScore: 0, totalScore: 0 });
   const [gameRecorded, setGameRecorded] = useState(false);
+  const [showPlayerPrompt, setShowPlayerPrompt] = useState(false);
+  const [playerForm, setPlayerForm] = useState<PlayerInfo>({ firstName: "", lastName: "", phone: "" });
+  const [playerFormError, setPlayerFormError] = useState("");
 
   const splashTimer = useRef<number | null>(null);
   const bombTimer = useRef<number | null>(null);
   const deckRef = useRef<Card[]>([]);
   const discardRef = useRef<Card[]>([]);
 
-  async function handleShareGame() {
+  function handleShareGame() {
     const gameUrl = window.location.href;
 
-    try {
-      if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(gameUrl);
-        window.alert(
-          "A shareable link to the game has been copied. Now simply paste it into a text message, messenger message, or email to share it with your friends."
-        );
-        return;
-      }
-    } catch (err) {
-      console.error("Clipboard copy failed:", err);
+    if (copyTextFallback(gameUrl)) {
+      window.alert(
+        "A shareable link to the game has been copied. Now simply paste it into a text message, messenger message, or email to share it with your friends."
+      );
+      return;
     }
 
     window.prompt("Copy this link and paste it into a text message or email:", gameUrl);
@@ -275,6 +321,22 @@ export default function SlotsSolitaire() {
     setSelected([]);
     setDrawsUsed(DRAWS_MAX);
     pushLog("Forced Game Over for testing.");
+  }
+
+  function savePlayerForm() {
+    const firstName = playerForm.firstName.trim();
+    const lastName = playerForm.lastName.trim();
+    const phone = playerForm.phone.replace(/\D/g, "");
+
+    if (!firstName || !lastName || phone.length !== 10) {
+      setPlayerFormError("Please enter a first name, last name, and 10 digit phone number.");
+      return;
+    }
+
+    savePlayerInfo({ firstName, lastName, phone });
+    setPlayerForm({ firstName, lastName, phone });
+    setPlayerFormError("");
+    setShowPlayerPrompt(false);
   }
 
   // Dealing animation (slot-style spin)
@@ -447,7 +509,7 @@ export default function SlotsSolitaire() {
     setSelected([]);
     setGrid(Array(GRID_SIZE).fill(null));
     setSpinSyms(Array(GRID_SIZE).fill(null));
-    setShowHelp(false);
+    setActiveTab("game");
     setShowSplash(true);
 
     splashTimer.current = window.setTimeout(() => {
@@ -475,6 +537,15 @@ export default function SlotsSolitaire() {
 
   useEffect(() => {
     setStats(loadStats());
+  }, []);
+
+  useEffect(() => {
+    const playerInfo = loadPlayerInfo();
+    if (playerInfo) {
+      setPlayerForm(playerInfo);
+    } else {
+      setShowPlayerPrompt(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -727,6 +798,28 @@ export default function SlotsSolitaire() {
       flex: 1,
     } as React.CSSProperties,
     btnDisabled: { opacity: 0.45, cursor: "not-allowed" } as React.CSSProperties,
+    tabs: {
+      display: "grid",
+      gridTemplateColumns: "repeat(3, 1fr)",
+      gap: 6,
+      marginBottom: 10,
+    } as React.CSSProperties,
+    tab: {
+      background: "#1f1f25",
+      border: "1px solid #303038",
+      color: "#d7d7df",
+      padding: "10px 6px",
+      borderRadius: 10,
+      fontWeight: 800,
+      fontSize: 13,
+      cursor: "pointer",
+      minHeight: 44,
+    } as React.CSSProperties,
+    tabActive: {
+      background: "#e9e9ee",
+      borderColor: "#e9e9ee",
+      color: "#111",
+    } as React.CSSProperties,
     stats: {
       display: "grid",
       alignItems: "start",
@@ -802,8 +895,87 @@ export default function SlotsSolitaire() {
       padding: 16,
       boxShadow: "0 8px 20px rgba(0,0,0,0.25)",
     } as React.CSSProperties,
+    helpImage: {
+      display: "block",
+      width: "100%",
+      maxWidth: 430,
+      height: "auto",
+      background: "#ffffff",
+      borderRadius: 10,
+    } as React.CSSProperties,
     helpCloseBtn: {
       alignSelf: "center",
+    } as React.CSSProperties,
+    statsScreen: {
+      background: "#141416",
+      border: "1px solid #2a2a2e",
+      borderRadius: 18,
+      padding: 16,
+      boxShadow: "0 8px 20px rgba(0,0,0,0.25)",
+    } as React.CSSProperties,
+    statsScreenTitle: {
+      margin: "0 0 12px",
+      fontSize: 22,
+      fontWeight: 900,
+    } as React.CSSProperties,
+    statsScreenGrid: {
+      display: "grid",
+      gap: 10,
+    } as React.CSSProperties,
+    statsActions: {
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      gap: 12,
+      marginTop: 16,
+    } as React.CSSProperties,
+    playerOverlay: {
+      position: "fixed",
+      inset: 0,
+      zIndex: 120,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: 18,
+      background: "rgba(0,0,0,0.82)",
+    } as React.CSSProperties,
+    playerDialog: {
+      width: "100%",
+      maxWidth: 420,
+      background: "#141416",
+      border: "1px solid #34343d",
+      borderRadius: 16,
+      padding: 18,
+      boxShadow: "0 16px 42px rgba(0,0,0,0.45)",
+    } as React.CSSProperties,
+    playerPrompt: {
+      margin: "0 0 14px",
+      color: "#f5f5f5",
+      fontSize: 16,
+      lineHeight: 1.45,
+    } as React.CSSProperties,
+    fieldLabel: {
+      display: "block",
+      fontSize: 12,
+      fontWeight: 800,
+      color: "#bdbdc8",
+      marginBottom: 5,
+    } as React.CSSProperties,
+    input: {
+      width: "100%",
+      boxSizing: "border-box",
+      background: "#0f0f11",
+      border: "1px solid #34343d",
+      borderRadius: 10,
+      color: "#f5f5f5",
+      padding: "10px 12px",
+      fontSize: 16,
+      marginBottom: 10,
+    } as React.CSSProperties,
+    formError: {
+      color: "#ffb4b4",
+      fontSize: 13,
+      marginBottom: 10,
     } as React.CSSProperties,
     gameOverOverlay: {
       position: "absolute",
@@ -928,7 +1100,7 @@ export default function SlotsSolitaire() {
       <div style={styles.container}>
         <header style={{ ...styles.row, marginBottom: 10 }}>
           <div>
-            <h1 style={styles.h1}>SLOTS Solitaire v2.7</h1>
+            <h1 style={styles.h1}>SLOTS Solitaire v2.8</h1>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
 {/*             <button style={styles.btn} onClick={forceGameOver}>Test Game Over</button> */}
@@ -938,18 +1110,42 @@ export default function SlotsSolitaire() {
           </div>
         </header>
 
-        {showHelp ? (
+        <div style={styles.tabs} role="tablist" aria-label="SLOTS Solitaire sections">
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "game"}
+            onClick={() => setActiveTab("game")}
+            style={{ ...styles.tab, ...(activeTab === "game" ? styles.tabActive : {}) }}
+          >
+            Game in Play
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "help"}
+            onClick={() => setActiveTab("help")}
+            style={{ ...styles.tab, ...(activeTab === "help" ? styles.tabActive : {}) }}
+          >
+            Instructions
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "stats"}
+            onClick={() => setActiveTab("stats")}
+            style={{ ...styles.tab, ...(activeTab === "stats" ? styles.tabActive : {}) }}
+          >
+            Stats
+          </button>
+        </div>
+
+        {activeTab === "help" ? (
           <div style={styles.helpScreen}>
             <img
               src={HELP_IMAGE_SRC}
               alt="Help"
-              style={{
-                maxWidth: "100%",
-                maxHeight: "180vh",
-                width: "auto",
-                height: "auto",
-                objectFit: "contain",
-              }}
+              style={styles.helpImage}
             />
             <button
               style={{
@@ -961,10 +1157,34 @@ export default function SlotsSolitaire() {
                 height: 40,
                 width: 120,
               }}
-              onClick={() => setShowHelp(false)}
+              onClick={() => setActiveTab("game")}
             >
               Close
             </button>
+          </div>
+        ) : activeTab === "stats" ? (
+          <div style={styles.statsScreen}>
+            <h2 style={styles.statsScreenTitle}>Stats</h2>
+            <div style={styles.statsScreenGrid}>
+              <Stat label="Current Score" value={score.toString()} />
+              <Stat label="Current Draws" value={`${drawsUsed}/${DRAWS_MAX}`} />
+              <Stat label="Number of Plays" value={stats.plays.toString()} />
+              <Stat label="High Score" value={stats.highScore.toString()} />
+              <Stat label="Average Score" value={displayedAverageScore.toString()} />
+            </div>
+            <div style={styles.statsActions}>
+              <button type="button" onClick={handleShareGame} style={styles.gameOverShareButton}>
+                Share With a Friend
+              </button>
+
+              <button
+                type="button"
+                onClick={() => window.location.assign("https://www.amazon.com/dp/B0GDP6YTM9")}
+                style={styles.gameOverOrderButton}
+              >
+                Buy the Card Game
+              </button>
+            </div>
           </div>
         ) : (
           <>
@@ -972,7 +1192,7 @@ export default function SlotsSolitaire() {
               <Stat label="Score" value={score.toString()} />
               <Stat label="Draws" value={`${drawsUsed}/${DRAWS_MAX}`} />
               <button
-                onClick={() => setShowHelp(true)}
+                onClick={() => setActiveTab("help")}
                 disabled={showSplash}
                 style={{
                   ...styles.btnPrimary,
@@ -1129,6 +1349,58 @@ export default function SlotsSolitaire() {
           </>
         )}
       </div>
+
+      {showPlayerPrompt ? (
+        <div style={styles.playerOverlay} role="dialog" aria-modal="true" aria-label="Player information">
+          <div style={styles.playerDialog}>
+            <p style={styles.playerPrompt}>
+              Kevin, the developer of this game, would like to know who is playing his game. Would you mind sharing your
+              name and phone number? We will never call you or share your personal information.
+            </p>
+
+            <label style={styles.fieldLabel} htmlFor="player-first-name">
+              First Name
+            </label>
+            <input
+              id="player-first-name"
+              style={styles.input}
+              value={playerForm.firstName}
+              onChange={(event) => setPlayerForm((form) => ({ ...form, firstName: event.target.value }))}
+              autoComplete="given-name"
+            />
+
+            <label style={styles.fieldLabel} htmlFor="player-last-name">
+              Last Name
+            </label>
+            <input
+              id="player-last-name"
+              style={styles.input}
+              value={playerForm.lastName}
+              onChange={(event) => setPlayerForm((form) => ({ ...form, lastName: event.target.value }))}
+              autoComplete="family-name"
+            />
+
+            <label style={styles.fieldLabel} htmlFor="player-phone">
+              10 Digit Phone Number
+            </label>
+            <input
+              id="player-phone"
+              style={styles.input}
+              value={playerForm.phone}
+              onChange={(event) => setPlayerForm((form) => ({ ...form, phone: event.target.value.replace(/\D/g, "").slice(0, 10) }))}
+              autoComplete="tel"
+              inputMode="numeric"
+              maxLength={10}
+            />
+
+            {playerFormError ? <div style={styles.formError}>{playerFormError}</div> : null}
+
+            <button type="button" style={styles.btnPrimary} onClick={savePlayerForm}>
+              Continue
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 
