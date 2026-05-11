@@ -31,6 +31,7 @@ function playCoinDrop() {
 
 const STATS_KEY = "slots_solitaire_stats";
 const PLAYER_INFO_KEY = "slots_solitaire_player_info";
+const PLAYER_INFO_SKIPPED_KEY = "slots_solitaire_player_info_skipped";
 const SPLASH_SRC = "/assets/splash.png";
 const SPLASH_MS = 2500;
 
@@ -88,7 +89,7 @@ type PlayerInfo = {
   phone: string;
 };
 
-type ActiveTab = "game" | "help" | "stats";
+type ActiveTab = "game" | "help" | "stats" | "amazon";
 
 function loadStats(): GameStats {
   try {
@@ -126,6 +127,11 @@ function loadPlayerInfo(): PlayerInfo | null {
 
 function savePlayerInfo(playerInfo: PlayerInfo) {
   localStorage.setItem(PLAYER_INFO_KEY, JSON.stringify(playerInfo));
+  localStorage.removeItem(PLAYER_INFO_SKIPPED_KEY);
+}
+
+function shouldPromptForPlayerInfo() {
+  return !loadPlayerInfo() && localStorage.getItem(PLAYER_INFO_SKIPPED_KEY) !== "true";
 }
 
 function copyTextFallback(text: string) {
@@ -150,6 +156,15 @@ function copyTextFallback(text: string) {
 
 const DRAWS_MAX = 25;
 const GRID_SIZE = 9;
+const AMAZON_RECOMMENDATIONS = [
+  {
+    title: "The Quietest Card Shuffler",
+    description:
+      "We've tried lots of card shufflers and this is the best one. It is quiet, rechargeable, and shuffles two decks.",
+    image: "/assets/Shuffler.png",
+    url: "https://www.amazon.com/dp/B0DJQXV11B/ref=cm_sw_r_as_gl_api_gl_i_EFT9NPMSS6ZA6X33T83K?linkCode=ml1&tag=kevinreagan-20&linkId=e6b35e96b72d07211dd9eb4acdac7dc2&th=1&content_source=fb&fb_content_id=Q9-wBQHnYtDOEYduQJUZooA52qof8tVWv9hT0-88GNYml_LwYBjZ3kFOe-EvgG5bZw&channel_type=fb&fbclid=IwY2xjawRuFkNleHRuA2FlbQIxMQBzcnRjBmFwcF9pZBAyMjIwMzkxNzg4MjAwODkyAAEeGTmOL2uANuQZLupT6ztUeoLM7eyUDhtkuVCLtdpebKclCFkG13U0lWaEWs0_aem_t9inxxsa5sI9A8ZD4M_cEg",
+  },
+];
 
 // Deck composition (total 80)
 const DECK_COUNTS = {
@@ -299,6 +314,7 @@ export default function SlotsSolitaire() {
 
   const splashTimer = useRef<number | null>(null);
   const bombTimer = useRef<number | null>(null);
+  const gameOverTabTimer = useRef<number | null>(null);
   const deckRef = useRef<Card[]>([]);
   const discardRef = useRef<Card[]>([]);
 
@@ -335,6 +351,12 @@ export default function SlotsSolitaire() {
 
     savePlayerInfo({ firstName, lastName, phone });
     setPlayerForm({ firstName, lastName, phone });
+    setPlayerFormError("");
+    setShowPlayerPrompt(false);
+  }
+
+  function skipPlayerForm() {
+    localStorage.setItem(PLAYER_INFO_SKIPPED_KEY, "true");
     setPlayerFormError("");
     setShowPlayerPrompt(false);
   }
@@ -501,6 +523,10 @@ export default function SlotsSolitaire() {
       window.clearTimeout(splashTimer.current);
       splashTimer.current = null;
     }
+    if (gameOverTabTimer.current) {
+      window.clearTimeout(gameOverTabTimer.current);
+      gameOverTabTimer.current = null;
+    }
 
     stopSpinTimers();
     setBombOverlay(false);
@@ -511,6 +537,9 @@ export default function SlotsSolitaire() {
     setSpinSyms(Array(GRID_SIZE).fill(null));
     setActiveTab("game");
     setShowSplash(true);
+    if (shouldPromptForPlayerInfo()) {
+      setShowPlayerPrompt(true);
+    }
 
     splashTimer.current = window.setTimeout(() => {
       setShowSplash(false);
@@ -531,6 +560,10 @@ export default function SlotsSolitaire() {
         window.clearTimeout(splashTimer.current);
         splashTimer.current = null;
       }
+      if (gameOverTabTimer.current) {
+        window.clearTimeout(gameOverTabTimer.current);
+        gameOverTabTimer.current = null;
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -543,7 +576,7 @@ export default function SlotsSolitaire() {
     const playerInfo = loadPlayerInfo();
     if (playerInfo) {
       setPlayerForm(playerInfo);
-    } else {
+    } else if (shouldPromptForPlayerInfo()) {
       setShowPlayerPrompt(true);
     }
   }, []);
@@ -742,6 +775,11 @@ export default function SlotsSolitaire() {
 
     uploadGameStats(updated.plays, updated.highScore, avg);
 
+    gameOverTabTimer.current = window.setTimeout(() => {
+      setActiveTab("amazon");
+      gameOverTabTimer.current = null;
+    }, 5000);
+
     if (updated.plays % 15 === 0) {
       window.setTimeout(() => {
         window.location.assign("https://www.amazon.com/dp/B0GDP6YTM9");
@@ -800,7 +838,7 @@ export default function SlotsSolitaire() {
     btnDisabled: { opacity: 0.45, cursor: "not-allowed" } as React.CSSProperties,
     tabs: {
       display: "grid",
-      gridTemplateColumns: "repeat(3, 1fr)",
+      gridTemplateColumns: "repeat(4, 1fr)",
       gap: 6,
       marginBottom: 10,
     } as React.CSSProperties,
@@ -811,13 +849,13 @@ export default function SlotsSolitaire() {
       padding: "10px 6px",
       borderRadius: 10,
       fontWeight: 800,
-      fontSize: 13,
+      fontSize: 14,
       cursor: "pointer",
       minHeight: 44,
     } as React.CSSProperties,
     tabActive: {
       background: "#e9e9ee",
-      borderColor: "#e9e9ee",
+      border: "1px solid #e9e9ee",
       color: "#111",
     } as React.CSSProperties,
     stats: {
@@ -929,6 +967,48 @@ export default function SlotsSolitaire() {
       gap: 12,
       marginTop: 16,
     } as React.CSSProperties,
+    amazonScreen: {
+      background: "#141416",
+      border: "1px solid #2a2a2e",
+      borderRadius: 18,
+      padding: 16,
+      boxShadow: "0 8px 20px rgba(0,0,0,0.25)",
+    } as React.CSSProperties,
+    amazonIntro: {
+      margin: "0 0 14px",
+      color: "#d7d7df",
+      fontSize: 15,
+      lineHeight: 1.45,
+    } as React.CSSProperties,
+    amazonProduct: {
+      background: "#101012",
+      border: "1px solid #303038",
+      borderRadius: 12,
+      padding: 14,
+      display: "grid",
+      justifyItems: "center",
+      gap: 10,
+    } as React.CSSProperties,
+    amazonProductTitle: {
+      margin: 0,
+      fontSize: 18,
+      lineHeight: 1.25,
+      fontWeight: 900,
+    } as React.CSSProperties,
+    amazonProductDescription: {
+      margin: 0,
+      color: "#c8c8d2",
+      fontSize: 14,
+      lineHeight: 1.45,
+    } as React.CSSProperties,
+    amazonProductImage: {
+      width: "100%",
+      maxWidth: 360,
+      borderRadius: 10,
+      border: "1px solid #303038",
+      display: "block",
+      height: "auto",
+    } as React.CSSProperties,
     playerOverlay: {
       position: "fixed",
       inset: 0,
@@ -976,6 +1056,11 @@ export default function SlotsSolitaire() {
       color: "#ffb4b4",
       fontSize: 13,
       marginBottom: 10,
+    } as React.CSSProperties,
+    playerDialogActions: {
+      display: "flex",
+      gap: 10,
+      alignItems: "center",
     } as React.CSSProperties,
     gameOverOverlay: {
       position: "absolute",
@@ -1118,7 +1203,7 @@ export default function SlotsSolitaire() {
             onClick={() => setActiveTab("game")}
             style={{ ...styles.tab, ...(activeTab === "game" ? styles.tabActive : {}) }}
           >
-            Game in Play
+            Game
           </button>
           <button
             type="button"
@@ -1127,7 +1212,7 @@ export default function SlotsSolitaire() {
             onClick={() => setActiveTab("help")}
             style={{ ...styles.tab, ...(activeTab === "help" ? styles.tabActive : {}) }}
           >
-            Instructions
+            Help
           </button>
           <button
             type="button"
@@ -1137,6 +1222,15 @@ export default function SlotsSolitaire() {
             style={{ ...styles.tab, ...(activeTab === "stats" ? styles.tabActive : {}) }}
           >
             Stats
+          </button>
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "amazon"}
+            onClick={() => setActiveTab("amazon")}
+            style={{ ...styles.tab, ...(activeTab === "amazon" ? styles.tabActive : {}) }}
+          >
+            Amazon
           </button>
         </div>
 
@@ -1186,26 +1280,30 @@ export default function SlotsSolitaire() {
               </button>
             </div>
           </div>
+        ) : activeTab === "amazon" ? (
+          <div style={styles.amazonScreen}>
+            <h2 style={styles.statsScreenTitle}>Amazon Picks</h2>
+            <p style={styles.amazonIntro}>Products Kevin recommends through his Amazon affiliate program.</p>
+
+            {AMAZON_RECOMMENDATIONS.map((product) => (
+              <div key={product.url} style={styles.amazonProduct}>
+                <img src={product.image} alt={product.title} style={styles.amazonProductImage} />
+                <p style={styles.amazonProductDescription}>{product.description}</p>
+                <button
+                  type="button"
+                  onClick={() => window.location.assign(product.url)}
+                  style={{ ...styles.gameOverOrderButton, justifySelf: "center" }}
+                >
+                  View on Amazon
+                </button>
+              </div>
+            ))}
+          </div>
         ) : (
           <>
             <div style={styles.stats}>
               <Stat label="Score" value={score.toString()} />
               <Stat label="Draws" value={`${drawsUsed}/${DRAWS_MAX}`} />
-              <button
-                onClick={() => setActiveTab("help")}
-                disabled={showSplash}
-                style={{
-                  ...styles.btnPrimary,
-                  fontSize: 20,
-                  flex: "0 0 auto",
-                  padding: "6px 10px",
-                  height: 60,
-                  width: 120,
-                  ...(showSplash ? styles.btnDisabled : {}),
-                }}
-              >
-                HELP
-              </button>
             </div>
 
             <div style={styles.card}>
@@ -1333,10 +1431,10 @@ export default function SlotsSolitaire() {
                     height: 86,
                     fontSize: 22,
                     ...(drawn
-                      ? { background: "#24242a", borderColor: "#2f2f36", color: "#f5f5f5" }
+                      ? { background: "#24242a", border: "1px solid #2f2f36", color: "#f5f5f5" }
                       : {
                           background: canDrawNow ? "#36d399" : "#24242a",
-                          borderColor: canDrawNow ? "#36d399" : "#2f2f36",
+                          border: `1px solid ${canDrawNow ? "#36d399" : "#2f2f36"}`,
                           color: canDrawNow ? "#ffffff" : "#a8a8b3",
                         }),
                     ...((drawn || canDrawNow) && !boardLocked ? {} : styles.btnDisabled),
@@ -1395,9 +1493,14 @@ export default function SlotsSolitaire() {
 
             {playerFormError ? <div style={styles.formError}>{playerFormError}</div> : null}
 
-            <button type="button" style={styles.btnPrimary} onClick={savePlayerForm}>
-              Continue
-            </button>
+            <div style={styles.playerDialogActions}>
+              <button type="button" style={styles.btnPrimary} onClick={savePlayerForm}>
+                Continue
+              </button>
+              <button type="button" style={styles.btn} onClick={skipPlayerForm}>
+                Skip
+              </button>
+            </div>
           </div>
         </div>
       ) : null}
