@@ -357,7 +357,7 @@ export default function SlotsSolitaire() {
     const gameUrl = window.location.href;
     const shareData = {
       title: "SLOTS Solitaire",
-      text: "Try SLOTS Solitaire.",
+      text: `SLOTS Solitaire is addictive. Play it and see if you can beat my high score of ${stats.highScore}.`,
       url: gameUrl,
     };
 
@@ -1325,7 +1325,7 @@ export default function SlotsSolitaire() {
       <div style={styles.container}>
         <header style={{ ...styles.row, marginBottom: 10 }}>
           <div>
-            <h1 style={styles.h1}>SLOTS Solitaire v3.1</h1>
+            <h1 style={styles.h1}>SLOTS Solitaire v3.11</h1>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button style={styles.btn} onClick={resetGame} disabled={showSplash}>
