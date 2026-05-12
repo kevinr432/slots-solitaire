@@ -54,19 +54,26 @@ function getSessionId(): string {
   }
 }
 
-async function uploadGameStats(plays: number, highScore: number, averageScore: number) {
+async function uploadGameStats(
+    plays: number,
+    highScore: number,
+    averageScore: number,
+    playerInfo: PlayerInfo | null
+) {
     try {
+        const payload = {
+            plays: plays,
+            highScore: highScore,
+            averageScore: averageScore,
+            sessionId: getSessionId(),
+            firstName: playerInfo?.firstName ?? "",
+            lastName: playerInfo?.lastName ?? "",
+            phone: playerInfo?.phone ?? ""
+        };
+
         const response = await fetch("https://d2xdybbmnhyevxwjhhb2qkftky0quyjy.lambda-url.us-east-1.on.aws/", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                plays: plays,
-                highScore: highScore,
-                averageScore: averageScore,
-                sessionId: getSessionId()
-            })
+            body: JSON.stringify(payload)
         });
 
         const text = await response.text();
@@ -806,7 +813,7 @@ export default function SlotsSolitaire() {
     setShowGameOverStatsTitle(true);
     setActiveTab("stats");
 
-    uploadGameStats(updated.plays, updated.highScore, avg);
+    uploadGameStats(updated.plays, updated.highScore, avg, loadPlayerInfo());
 
     if (greatGameTimer.current) {
       window.clearTimeout(greatGameTimer.current);
