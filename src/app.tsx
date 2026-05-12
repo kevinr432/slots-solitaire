@@ -32,6 +32,7 @@ function playCoinDrop() {
 const STATS_KEY = "slots_solitaire_stats";
 const PLAYER_INFO_KEY = "slots_solitaire_player_info";
 const PLAYER_INFO_SKIPPED_KEY = "slots_solitaire_player_info_skipped";
+const AMAZON_LAST_INDEX_KEY = "slots_solitaire_amazon_last_index";
 const SPLASH_SRC = "/assets/splash.png";
 const SPLASH_MS = 2500;
 
@@ -161,6 +162,22 @@ function copyTextFallback(text: string) {
   }
 }
 
+function getStoredAmazonIndex() {
+  try {
+    return Number(localStorage.getItem(AMAZON_LAST_INDEX_KEY)) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+function saveAmazonIndex(index: number) {
+  try {
+    localStorage.setItem(AMAZON_LAST_INDEX_KEY, index.toString());
+  } catch {
+    // Noncritical preference storage.
+  }
+}
+
 const DRAWS_MAX = 25;
 const GRID_SIZE = 9;
 const AMAZON_RECOMMENDATIONS = [
@@ -170,6 +187,12 @@ const AMAZON_RECOMMENDATIONS = [
       "We've tried lots of card shufflers and this is the best one. It is quiet, rechargeable, and shuffles two decks.",
     image: "/assets/Shuffler.png",
     url: "https://www.amazon.com/dp/B0DJQXV11B/ref=cm_sw_r_as_gl_api_gl_i_EFT9NPMSS6ZA6X33T83K?linkCode=ml1&tag=kevinreagan-20&linkId=e6b35e96b72d07211dd9eb4acdac7dc2&th=1&content_source=fb&fb_content_id=Q9-wBQHnYtDOEYduQJUZooA52qof8tVWv9hT0-88GNYml_LwYBjZ3kFOe-EvgG5bZw&channel_type=fb&fbclid=IwY2xjawRuFkNleHRuA2FlbQIxMQBzcnRjBmFwcF9pZBAyMjIwMzkxNzg4MjAwODkyAAEeGTmOL2uANuQZLupT6ztUeoLM7eyUDhtkuVCLtdpebKclCFkG13U0lWaEWs0_aem_t9inxxsa5sI9A8ZD4M_cEg",
+  },
+  {
+    title: "Amazon Basics AAA Batteries",
+    description: "These batteries are just as good as the leading brands at a much lower cost.",
+    image: "/assets/Batteries.png",
+    url: "https://amzn.to/4tAyD0h",
   },
 ];
 
@@ -313,11 +336,13 @@ export default function SlotsSolitaire() {
   const [bombOverlay, setBombOverlay] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
   const [activeTab, setActiveTab] = useState<ActiveTab>("game");
+  const [amazonIndex, setAmazonIndex] = useState(0);
   const [stats, setStats] = useState<GameStats>({ plays: 0, highScore: 0, totalScore: 0 });
   const [gameRecorded, setGameRecorded] = useState(false);
   const [showPlayerPrompt, setShowPlayerPrompt] = useState(false);
   const [playerForm, setPlayerForm] = useState<PlayerInfo>({ firstName: "", lastName: "", phone: "" });
   const [playerFormError, setPlayerFormError] = useState("");
+  const amazonTouchStartX = useRef<number | null>(null);
   const [scoreBam, setScoreBam] = useState<number | null>(null);
   const [showGameOverStatsTitle, setShowGameOverStatsTitle] = useState(false);
 
@@ -339,6 +364,37 @@ export default function SlotsSolitaire() {
     }
 
     window.prompt("Copy this link and paste it into a text message or email:", gameUrl);
+  }
+
+  function setAmazonProductIndex(index: number) {
+    const next = (index + AMAZON_RECOMMENDATIONS.length) % AMAZON_RECOMMENDATIONS.length;
+    setAmazonIndex(next);
+    saveAmazonIndex(next);
+  }
+
+  function openAmazonPicks() {
+    const next = (getStoredAmazonIndex() + 1) % AMAZON_RECOMMENDATIONS.length;
+    setAmazonProductIndex(next);
+    setShowGameOverStatsTitle(false);
+    setActiveTab("amazon");
+  }
+
+  function shiftAmazonProduct(direction: -1 | 1) {
+    setAmazonProductIndex(amazonIndex + direction);
+  }
+
+  function handleAmazonTouchStart(event: React.TouchEvent<HTMLDivElement>) {
+    amazonTouchStartX.current = event.touches[0]?.clientX ?? null;
+  }
+
+  function handleAmazonTouchEnd(event: React.TouchEvent<HTMLDivElement>) {
+    if (amazonTouchStartX.current === null) return;
+    const endX = event.changedTouches[0]?.clientX ?? amazonTouchStartX.current;
+    const deltaX = endX - amazonTouchStartX.current;
+    amazonTouchStartX.current = null;
+
+    if (Math.abs(deltaX) < 40) return;
+    shiftAmazonProduct(deltaX < 0 ? 1 : -1);
   }
 
   function forceGameOver() {
@@ -821,13 +877,14 @@ export default function SlotsSolitaire() {
 
     greatGameTimer.current = window.setTimeout(() => {
       setShowGameOverStatsTitle(false);
-      setActiveTab("amazon");
+      openAmazonPicks();
       greatGameTimer.current = null;
     }, 3000);
   }, [gameOver, gameRecorded, score, stats]);
 
   const displayedAverageScore =
     gameOver && gameRecorded && stats.plays > 0 ? Math.round(stats.totalScore / stats.plays) : averageScore;
+  const amazonProduct = AMAZON_RECOMMENDATIONS[amazonIndex];
 
   // ---------- Styles ----------
   const styles = {
@@ -1027,6 +1084,7 @@ export default function SlotsSolitaire() {
       display: "grid",
       justifyItems: "center",
       gap: 10,
+      touchAction: "pan-y",
     } as React.CSSProperties,
     amazonProductTitle: {
       margin: 0,
@@ -1047,6 +1105,32 @@ export default function SlotsSolitaire() {
       border: "1px solid #303038",
       display: "block",
       height: "auto",
+    } as React.CSSProperties,
+    amazonCarouselControls: {
+      width: "100%",
+      maxWidth: 320,
+      display: "grid",
+      gridTemplateColumns: "48px 1fr 48px",
+      alignItems: "center",
+      gap: 8,
+    } as React.CSSProperties,
+    amazonArrowButton: {
+      width: 48,
+      height: 44,
+      borderRadius: 12,
+      border: "1px solid #303038",
+      background: "#24242a",
+      color: "#ffffff",
+      fontSize: 30,
+      lineHeight: 1,
+      fontWeight: 900,
+      cursor: "pointer",
+    } as React.CSSProperties,
+    amazonCounter: {
+      color: "#d7d7df",
+      fontSize: 14,
+      fontWeight: 800,
+      textAlign: "center" as const,
     } as React.CSSProperties,
     playerOverlay: {
       position: "fixed",
@@ -1214,7 +1298,7 @@ export default function SlotsSolitaire() {
       <div style={styles.container}>
         <header style={{ ...styles.row, marginBottom: 10 }}>
           <div>
-            <h1 style={styles.h1}>SLOTS Solitaire v2.9</h1>
+            <h1 style={styles.h1}>SLOTS Solitaire v3.0</h1>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button style={styles.btn} onClick={resetGame} disabled={showSplash}>
@@ -1264,10 +1348,7 @@ export default function SlotsSolitaire() {
             type="button"
             role="tab"
             aria-selected={activeTab === "amazon"}
-            onClick={() => {
-              setShowGameOverStatsTitle(false);
-              setActiveTab("amazon");
-            }}
+            onClick={openAmazonPicks}
             style={{ ...styles.tab, ...(activeTab === "amazon" ? styles.tabActive : {}) }}
           >
             Amazon
@@ -1326,19 +1407,46 @@ export default function SlotsSolitaire() {
             <h2 style={styles.statsScreenTitle}>Amazon Picks</h2>
             <p style={styles.amazonIntro}>Products Kevin recommends through his Amazon affiliate program.</p>
 
-            {AMAZON_RECOMMENDATIONS.map((product) => (
-              <div key={product.url} style={styles.amazonProduct}>
-                <img src={product.image} alt={product.title} style={styles.amazonProductImage} />
-                <p style={styles.amazonProductDescription}>{product.description}</p>
+            <div
+              key={amazonProduct.url}
+              style={styles.amazonProduct}
+              onTouchStart={handleAmazonTouchStart}
+              onTouchEnd={handleAmazonTouchEnd}
+            >
+              <img src={amazonProduct.image} alt={amazonProduct.title} style={styles.amazonProductImage} />
+              <h3 style={styles.amazonProductTitle}>{amazonProduct.title}</h3>
+              <p style={styles.amazonProductDescription}>{amazonProduct.description}</p>
+
+              <div style={styles.amazonCarouselControls}>
                 <button
                   type="button"
-                  onClick={() => window.location.assign(product.url)}
-                  style={{ ...styles.gameOverOrderButton, justifySelf: "center" }}
+                  aria-label="Previous Amazon pick"
+                  onClick={() => shiftAmazonProduct(-1)}
+                  style={styles.amazonArrowButton}
                 >
-                  View on Amazon
+                  ‹
+                </button>
+                <div style={styles.amazonCounter}>
+                  {amazonIndex + 1}/{AMAZON_RECOMMENDATIONS.length}
+                </div>
+                <button
+                  type="button"
+                  aria-label="Next Amazon pick"
+                  onClick={() => shiftAmazonProduct(1)}
+                  style={styles.amazonArrowButton}
+                >
+                  ›
                 </button>
               </div>
-            ))}
+
+              <button
+                type="button"
+                onClick={() => window.location.assign(amazonProduct.url)}
+                style={{ ...styles.gameOverOrderButton, justifySelf: "center" }}
+              >
+                View on Amazon
+              </button>
+            </div>
           </div>
         ) : (
           <>
