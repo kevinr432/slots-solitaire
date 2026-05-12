@@ -353,8 +353,22 @@ export default function SlotsSolitaire() {
   const deckRef = useRef<Card[]>([]);
   const discardRef = useRef<Card[]>([]);
 
-  function handleShareGame() {
+  async function handleShareGame() {
     const gameUrl = window.location.href;
+    const shareData = {
+      title: "SLOTS Solitaire",
+      text: "Try SLOTS Solitaire.",
+      url: gameUrl,
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch (err) {
+        if (err instanceof DOMException && err.name === "AbortError") return;
+      }
+    }
 
     if (copyTextFallback(gameUrl)) {
       window.alert(
@@ -395,6 +409,10 @@ export default function SlotsSolitaire() {
 
     if (Math.abs(deltaX) < 40) return;
     shiftAmazonProduct(deltaX < 0 ? 1 : -1);
+  }
+
+  function openAmazonProduct(url: string) {
+    window.open(url, "_blank", "noopener,noreferrer");
   }
 
   function forceGameOver() {
@@ -1098,6 +1116,15 @@ export default function SlotsSolitaire() {
       fontSize: 14,
       lineHeight: 1.45,
     } as React.CSSProperties,
+    amazonImageButton: {
+      display: "block",
+      width: "100%",
+      maxWidth: 360,
+      padding: 0,
+      border: 0,
+      background: "transparent",
+      cursor: "pointer",
+    } as React.CSSProperties,
     amazonProductImage: {
       width: "100%",
       maxWidth: 360,
@@ -1298,7 +1325,7 @@ export default function SlotsSolitaire() {
       <div style={styles.container}>
         <header style={{ ...styles.row, marginBottom: 10 }}>
           <div>
-            <h1 style={styles.h1}>SLOTS Solitaire v3.0</h1>
+            <h1 style={styles.h1}>SLOTS Solitaire v3.1</h1>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button style={styles.btn} onClick={resetGame} disabled={showSplash}>
@@ -1413,7 +1440,14 @@ export default function SlotsSolitaire() {
               onTouchStart={handleAmazonTouchStart}
               onTouchEnd={handleAmazonTouchEnd}
             >
-              <img src={amazonProduct.image} alt={amazonProduct.title} style={styles.amazonProductImage} />
+              <button
+                type="button"
+                onClick={() => openAmazonProduct(amazonProduct.url)}
+                style={styles.amazonImageButton}
+                aria-label={`View ${amazonProduct.title} on Amazon`}
+              >
+                <img src={amazonProduct.image} alt={amazonProduct.title} style={styles.amazonProductImage} />
+              </button>
               <h3 style={styles.amazonProductTitle}>{amazonProduct.title}</h3>
               <p style={styles.amazonProductDescription}>{amazonProduct.description}</p>
 
@@ -1441,7 +1475,7 @@ export default function SlotsSolitaire() {
 
               <button
                 type="button"
-                onClick={() => window.location.assign(amazonProduct.url)}
+                onClick={() => openAmazonProduct(amazonProduct.url)}
                 style={{ ...styles.gameOverOrderButton, justifySelf: "center" }}
               >
                 View on Amazon
