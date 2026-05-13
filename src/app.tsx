@@ -38,6 +38,7 @@ const SPLASH_MS = 2500;
 
 const STATS_UPLOAD_URL = "https://d2xdybbmnhyevxwjhhb2qkftky0quyjy.lambda-url.us-east-1.on.aws/";
 const SESSION_ID_KEY = "slots_session_id";
+const REFERRER_SESSION_ID_KEY = "slots_referrer_session_id";
 
 function getSessionId(): string {
   try {
@@ -52,6 +53,25 @@ function getSessionId(): string {
     return id;
   } catch {
     return "fallback_" + Date.now();
+  }
+}
+
+function getShareUrl(): string {
+  const url = new URL(window.location.href);
+  url.searchParams.set("ref", getSessionId());
+  return url.toString();
+}
+
+function saveIncomingReferral() {
+  try {
+    if (localStorage.getItem(REFERRER_SESSION_ID_KEY)) return;
+
+    const ref = new URLSearchParams(window.location.search).get("ref")?.trim();
+    if (!ref || ref === getSessionId()) return;
+
+    localStorage.setItem(REFERRER_SESSION_ID_KEY, ref);
+  } catch {
+    // Referral tracking is optional and should never block play.
   }
 }
 
@@ -374,7 +394,7 @@ export default function SlotsSolitaire() {
   const discardRef = useRef<Card[]>([]);
 
   async function handleShareGame() {
-    const gameUrl = window.location.href;
+    const gameUrl = getShareUrl();
     const shareData = {
       title: "SLOTS Solitaire",
       text: `SLOTS Solitaire is addictive. Play it and see if you can beat my high score of ${stats.highScore}.`,
@@ -676,6 +696,7 @@ export default function SlotsSolitaire() {
   }
 
   useEffect(() => {
+    saveIncomingReferral();
     resetGame();
     return () => {
       stopSpinTimers();
@@ -1375,7 +1396,7 @@ export default function SlotsSolitaire() {
       <div style={styles.container}>
         <header style={{ ...styles.row, marginBottom: 10 }}>
           <div>
-            <h1 style={styles.h1}>SLOTS Solitaire v3.12</h1>
+            <h1 style={styles.h1}>SLOTS Solitaire v3.13</h1>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button style={styles.btn} onClick={resetGame} disabled={showSplash}>
