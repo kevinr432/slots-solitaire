@@ -361,7 +361,6 @@ export default function SlotsSolitaire() {
   const splashTimer = useRef<number | null>(null);
   const bombTimer = useRef<number | null>(null);
   const scoreBamTimer = useRef<number | null>(null);
-  const greatGameTimer = useRef<number | null>(null);
   const deckRef = useRef<Card[]>([]);
   const discardRef = useRef<Card[]>([]);
 
@@ -640,10 +639,6 @@ export default function SlotsSolitaire() {
       window.clearTimeout(scoreBamTimer.current);
       scoreBamTimer.current = null;
     }
-    if (greatGameTimer.current) {
-      window.clearTimeout(greatGameTimer.current);
-      greatGameTimer.current = null;
-    }
 
     stopSpinTimers();
     setBombOverlay(false);
@@ -682,10 +677,6 @@ export default function SlotsSolitaire() {
       if (scoreBamTimer.current) {
         window.clearTimeout(scoreBamTimer.current);
         scoreBamTimer.current = null;
-      }
-      if (greatGameTimer.current) {
-        window.clearTimeout(greatGameTimer.current);
-        greatGameTimer.current = null;
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -900,16 +891,6 @@ export default function SlotsSolitaire() {
     setActiveTab("stats");
 
     uploadGameStats(updated.plays, updated.highScore, avg, loadPlayerInfo());
-
-    if (greatGameTimer.current) {
-      window.clearTimeout(greatGameTimer.current);
-    }
-
-    greatGameTimer.current = window.setTimeout(() => {
-      setShowGameOverStatsTitle(false);
-      openAmazonPicks();
-      greatGameTimer.current = null;
-    }, 3000);
   }, [gameOver, gameRecorded, score, stats]);
 
   const displayedAverageScore =
