@@ -194,6 +194,18 @@ const AMAZON_RECOMMENDATIONS = [
     image: "/assets/Batteries.png",
     url: "https://amzn.to/4tAyD0h",
   },
+  {
+    title: "What the Heck!",
+    description: "Use these to play SLOTS in bed without straining your neck.",
+    image: "/assets/Shutter.png",
+    url: "https://amzn.to/4wm6U6h",
+  },
+  {
+    title: "SLOTS Card Game",
+    description: "Get the card game version of SLOTS to play with your friends and family at home.",
+    image: "/assets/SlotsCardGame.png",
+    url: "https://www.amazon.com/dp/B0GDP6YTM9",
+  },
 ];
 
 // Deck composition (total 80)
