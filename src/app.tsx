@@ -87,8 +87,15 @@ async function uploadGameStats(
 
 type GameStats = {
   plays: number;
+  lastScore: number;
   highScore: number;
   totalScore: number;
+};
+
+type GameOverSummary = {
+  lastScore: number;
+  highScore: number;
+  averageScore: number;
 };
 
 type PlayerInfo = {
@@ -102,15 +109,16 @@ type ActiveTab = "game" | "help" | "stats" | "amazon";
 function loadStats(): GameStats {
   try {
     const raw = localStorage.getItem(STATS_KEY);
-    if (!raw) return { plays: 0, highScore: 0, totalScore: 0 };
+    if (!raw) return { plays: 0, lastScore: 0, highScore: 0, totalScore: 0 };
     const parsed = JSON.parse(raw);
     return {
       plays: Number(parsed.plays) || 0,
+      lastScore: Number(parsed.lastScore) || 0,
       highScore: Number(parsed.highScore) || 0,
       totalScore: Number(parsed.totalScore) || 0,
     };
   } catch {
-    return { plays: 0, highScore: 0, totalScore: 0 };
+    return { plays: 0, lastScore: 0, highScore: 0, totalScore: 0 };
   }
 }
 
@@ -349,18 +357,19 @@ export default function SlotsSolitaire() {
   const [showSplash, setShowSplash] = useState(true);
   const [activeTab, setActiveTab] = useState<ActiveTab>("game");
   const [amazonIndex, setAmazonIndex] = useState(0);
-  const [stats, setStats] = useState<GameStats>({ plays: 0, highScore: 0, totalScore: 0 });
+  const [stats, setStats] = useState<GameStats>({ plays: 0, lastScore: 0, highScore: 0, totalScore: 0 });
   const [gameRecorded, setGameRecorded] = useState(false);
   const [showPlayerPrompt, setShowPlayerPrompt] = useState(false);
   const [playerForm, setPlayerForm] = useState<PlayerInfo>({ firstName: "", lastName: "", phone: "" });
   const [playerFormError, setPlayerFormError] = useState("");
   const amazonTouchStartX = useRef<number | null>(null);
   const [scoreBam, setScoreBam] = useState<number | null>(null);
-  const [showGameOverStatsTitle, setShowGameOverStatsTitle] = useState(false);
+  const [gameOverSummary, setGameOverSummary] = useState<GameOverSummary | null>(null);
 
   const splashTimer = useRef<number | null>(null);
   const bombTimer = useRef<number | null>(null);
   const scoreBamTimer = useRef<number | null>(null);
+  const gameOverSummaryTimer = useRef<number | null>(null);
   const deckRef = useRef<Card[]>([]);
   const discardRef = useRef<Card[]>([]);
 
@@ -400,7 +409,7 @@ export default function SlotsSolitaire() {
   function openAmazonPicks() {
     const next = (getStoredAmazonIndex() + 1) % AMAZON_RECOMMENDATIONS.length;
     setAmazonProductIndex(next);
-    setShowGameOverStatsTitle(false);
+    setGameOverSummary(null);
     setActiveTab("amazon");
   }
 
@@ -639,6 +648,10 @@ export default function SlotsSolitaire() {
       window.clearTimeout(scoreBamTimer.current);
       scoreBamTimer.current = null;
     }
+    if (gameOverSummaryTimer.current) {
+      window.clearTimeout(gameOverSummaryTimer.current);
+      gameOverSummaryTimer.current = null;
+    }
 
     stopSpinTimers();
     setBombOverlay(false);
@@ -648,7 +661,7 @@ export default function SlotsSolitaire() {
     setGrid(Array(GRID_SIZE).fill(null));
     setSpinSyms(Array(GRID_SIZE).fill(null));
     setScoreBam(null);
-    setShowGameOverStatsTitle(false);
+    setGameOverSummary(null);
     setActiveTab("game");
     setShowSplash(true);
     if (shouldPromptForPlayerInfo()) {
@@ -677,6 +690,10 @@ export default function SlotsSolitaire() {
       if (scoreBamTimer.current) {
         window.clearTimeout(scoreBamTimer.current);
         scoreBamTimer.current = null;
+      }
+      if (gameOverSummaryTimer.current) {
+        window.clearTimeout(gameOverSummaryTimer.current);
+        gameOverSummaryTimer.current = null;
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -878,6 +895,7 @@ export default function SlotsSolitaire() {
 
     const updated: GameStats = {
       plays: stats.plays + 1,
+      lastScore: score,
       highScore: Math.max(stats.highScore, score),
       totalScore: stats.totalScore + score,
     };
@@ -887,10 +905,24 @@ export default function SlotsSolitaire() {
     setStats(updated);
     saveStats(updated);
     setGameRecorded(true);
-    setShowGameOverStatsTitle(true);
-    setActiveTab("stats");
+    setGameOverSummary({
+      lastScore: score,
+      highScore: updated.highScore,
+      averageScore: avg,
+    });
+    setAmazonProductIndex(getStoredAmazonIndex() + 1);
+    setActiveTab("amazon");
 
     uploadGameStats(updated.plays, updated.highScore, avg, loadPlayerInfo());
+
+    if (gameOverSummaryTimer.current) {
+      window.clearTimeout(gameOverSummaryTimer.current);
+    }
+
+    gameOverSummaryTimer.current = window.setTimeout(() => {
+      setGameOverSummary(null);
+      gameOverSummaryTimer.current = null;
+    }, 5000);
   }, [gameOver, gameRecorded, score, stats]);
 
   const displayedAverageScore =
@@ -1081,6 +1113,39 @@ export default function SlotsSolitaire() {
       padding: 16,
       boxShadow: "0 8px 20px rgba(0,0,0,0.25)",
     } as React.CSSProperties,
+    gameOverSummary: {
+      margin: "0 0 16px",
+      padding: 14,
+      background: "#ffcf33",
+      color: "#111111",
+      border: "4px solid #ffffff",
+      borderRadius: 18,
+      boxShadow: "0 16px 34px rgba(0,0,0,0.38)",
+      textAlign: "center" as const,
+    } as React.CSSProperties,
+    gameOverSummaryTitle: {
+      margin: "0 0 10px",
+      fontSize: 28,
+      lineHeight: 1,
+      fontWeight: 1000,
+    } as React.CSSProperties,
+    gameOverSummaryGrid: {
+      display: "grid",
+      gridTemplateColumns: "repeat(3, 1fr)",
+      gap: 8,
+    } as React.CSSProperties,
+    gameOverSummaryLabel: {
+      display: "block",
+      fontSize: 11,
+      fontWeight: 900,
+      textTransform: "uppercase" as const,
+    } as React.CSSProperties,
+    gameOverSummaryValue: {
+      display: "block",
+      fontSize: 22,
+      fontWeight: 1000,
+      lineHeight: 1.1,
+    } as React.CSSProperties,
     amazonIntro: {
       margin: "0 0 14px",
       color: "#d7d7df",
@@ -1231,14 +1296,6 @@ export default function SlotsSolitaire() {
       lineHeight: 1.05,
       textShadow: "1px 1px 0 #ffffff",
     } as React.CSSProperties,
-    statsGameOverTitle: {
-      margin: "0 0 12px",
-      color: "#ffcf33",
-      fontSize: 28,
-      lineHeight: 1.1,
-      fontWeight: 1000,
-      textAlign: "center" as const,
-    } as React.CSSProperties,
     gameOverShareButton: {
       background: "#36d399",
       border: "1px solid #36d399",
@@ -1318,7 +1375,7 @@ export default function SlotsSolitaire() {
       <div style={styles.container}>
         <header style={{ ...styles.row, marginBottom: 10 }}>
           <div>
-            <h1 style={styles.h1}>SLOTS Solitaire v3.11</h1>
+            <h1 style={styles.h1}>SLOTS Solitaire v3.12</h1>
           </div>
           <div style={{ display: "flex", gap: 8 }}>
             <button style={styles.btn} onClick={resetGame} disabled={showSplash}>
@@ -1333,7 +1390,7 @@ export default function SlotsSolitaire() {
             role="tab"
             aria-selected={activeTab === "game"}
             onClick={() => {
-              setShowGameOverStatsTitle(false);
+              setGameOverSummary(null);
               setActiveTab("game");
             }}
             style={{ ...styles.tab, ...(activeTab === "game" ? styles.tabActive : {}) }}
@@ -1345,7 +1402,7 @@ export default function SlotsSolitaire() {
             role="tab"
             aria-selected={activeTab === "help"}
             onClick={() => {
-              setShowGameOverStatsTitle(false);
+              setGameOverSummary(null);
               setActiveTab("help");
             }}
             style={{ ...styles.tab, ...(activeTab === "help" ? styles.tabActive : {}) }}
@@ -1357,7 +1414,7 @@ export default function SlotsSolitaire() {
             role="tab"
             aria-selected={activeTab === "stats"}
             onClick={() => {
-              setShowGameOverStatsTitle(false);
+              setGameOverSummary(null);
               setActiveTab("stats");
             }}
             style={{ ...styles.tab, ...(activeTab === "stats" ? styles.tabActive : {}) }}
@@ -1399,11 +1456,9 @@ export default function SlotsSolitaire() {
           </div>
         ) : activeTab === "stats" ? (
           <div style={styles.statsScreen}>
-            {showGameOverStatsTitle ? <h2 style={styles.statsGameOverTitle}>Game Over</h2> : null}
             <h2 style={styles.statsScreenTitle}>Stats</h2>
             <div style={styles.statsScreenGrid}>
-              <Stat label="Current Score" value={score.toString()} />
-              <Stat label="Current Draws" value={`${drawsUsed}/${DRAWS_MAX}`} />
+              <Stat label="Last Game Score" value={stats.lastScore.toString()} />
               <Stat label="Number of Plays" value={stats.plays.toString()} />
               <Stat label="High Score" value={stats.highScore.toString()} />
               <Stat label="Average Score" value={displayedAverageScore.toString()} />
@@ -1424,6 +1479,25 @@ export default function SlotsSolitaire() {
           </div>
         ) : activeTab === "amazon" ? (
           <div style={styles.amazonScreen}>
+            {gameOverSummary ? (
+              <div style={styles.gameOverSummary}>
+                <h2 style={styles.gameOverSummaryTitle}>GAME OVER</h2>
+                <div style={styles.gameOverSummaryGrid}>
+                  <div>
+                    <span style={styles.gameOverSummaryLabel}>Last Score</span>
+                    <span style={styles.gameOverSummaryValue}>{gameOverSummary.lastScore}</span>
+                  </div>
+                  <div>
+                    <span style={styles.gameOverSummaryLabel}>High Score</span>
+                    <span style={styles.gameOverSummaryValue}>{gameOverSummary.highScore}</span>
+                  </div>
+                  <div>
+                    <span style={styles.gameOverSummaryLabel}>Average</span>
+                    <span style={styles.gameOverSummaryValue}>{gameOverSummary.averageScore}</span>
+                  </div>
+                </div>
+              </div>
+            ) : null}
             <h2 style={styles.statsScreenTitle}>Amazon Picks</h2>
             <p style={styles.amazonIntro}>Products Kevin recommends through his Amazon affiliate program.</p>
 
